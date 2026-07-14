@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MDT Project Manager</title>
+<link rel="icon" href="favicon.svg" />
+<style>
+  :root {
+    --primary:#2f5d86; --accent:#4b90c4; --bg:#0d1117; --surface:#161b22;
+    --surface2:#1c2430; --border:#2b3646; --fg:#e8eef5; --muted:#93a1b3;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.5;
+  }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .app { display:flex; min-height:100vh; }
+  /* Sidebar */
+  aside {
+    width:230px; background:#0b0f14; border-right:1px solid var(--border);
+    padding:20px 14px; flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .brand .shield {
+    width:34px; height:34px; border-radius:7px; flex-shrink:0;
+    background:linear-gradient(160deg,var(--primary),#1b3a55);
+    display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff;
+  }
+  .brand h1 { font-size:15px; margin:0; line-height:1.2; }
+  .brand small { color:var(--muted); font-size:11px; }
+  nav { margin-top:22px; display:flex; flex-direction:column; gap:2px; }
+  nav button {
+    text-align:left; background:none; border:none; color:var(--muted); cursor:pointer;
+    padding:9px 11px; border-radius:7px; font-size:13.5px; width:100%; display:flex;
+    align-items:center; gap:9px;
+  }
+  nav button:hover { background:var(--surface); color:var(--fg); }
+  nav button.active { background:var(--primary); color:#fff; }
+  .who {
+    margin-top:24px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; color:var(--muted);
+  }
+  .who select {
+    width:100%; margin-top:6px; background:var(--surface); color:var(--fg);
+    border:1px solid var(--border); border-radius:6px; padding:7px; font-size:12.5px;
+  }
+  .who .rolechip { margin-top:8px; }
+  /* Main */
+  main { flex:1; padding:26px 32px; max-width:1200px; }
+  .page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; }
+  .page-head h2 { margin:0 0 4px; font-size:22px; }
+  .page-head p { margin:0; color:var(--muted); }
+  /* Cards / grid */
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:26px; }
+  .kpi { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .kpi .n { font-size:28px; font-weight:700; }
+  .kpi .l { color:var(--muted); font-size:12.5px; margin-top:2px; }
+  .kpi.warn .n { color:#e07a7a; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:820px){ .grid2 { grid-template-columns:1fr; } aside{ display:none; } }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
+  .card h3 { margin:0 0 12px; font-size:15px; }
+  /* Table */
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; }
+  th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; }
+  tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:var(--surface2); }
+  /* Badges & chips */
+  .badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:600; color:#fff; white-space:nowrap; }
+  .overdue { display:inline-block; padding:2px 8px; border-radius:5px; font-size:11px; font-weight:700; background:#7a2020; color:#ffd7d7; margin-left:6px; }
+  .rolechip { display:inline-block; padding:2px 9px; border-radius:5px; font-size:11.5px; background:var(--surface2); border:1px solid var(--border); color:var(--fg); }
+  /* Buttons */
+  .btn { background:var(--primary); color:#fff; border:none; border-radius:7px; padding:8px 14px; font-size:13px; cursor:pointer; }
+  .btn:hover { filter:brightness(1.1); }
+  .btn.ghost { background:var(--surface2); border:1px solid var(--border); }
+  .btn.danger { background:#7a2626; }
+  .btn.sm { padding:5px 10px; font-size:12px; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  input,select,textarea {
+    background:var(--surface); color:var(--fg); border:1px solid var(--border);
+    border-radius:7px; padding:8px 10px; font-size:13px; font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:12px 0 5px; }
+  .kanban { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media (max-width:820px){ .kanban { grid-template-columns:1fr; } }
+  .col h4 { margin:0 0 10px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .taskcard { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:11px; margin-bottom:9px; cursor:pointer; }
+  .taskcard:hover { border-color:var(--accent); }
+  .taskcard .t { font-weight:600; margin-bottom:6px; }
+  .taskcard .meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .empty { color:var(--muted); padding:20px; text-align:center; font-style:italic; }
+  .linklike { color:var(--accent); cursor:pointer; }
+  .linklike:hover { text-decoration:underline; }
+  /* Modal */
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:flex-start; justify-content:center; padding:60px 16px; z-index:50; overflow-y:auto; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; width:100%; max-width:520px; }
+  .modal h3 { margin:0 0 6px; }
+  .modal .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+  .errs { background:#3a1c1c; border:1px solid #7a2626; color:#ffb4b4; border-radius:7px; padding:10px 12px; margin:12px 0; font-size:12.5px; }
+  .backlink { color:var(--muted); cursor:pointer; font-size:13px; margin-bottom:12px; display:inline-block; }
+  .backlink:hover { color:var(--fg); }
+  .banner { background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:7px; padding:10px 14px; font-size:12.5px; color:var(--muted); margin-bottom:20px; }
+  .metaline { color:var(--muted); font-size:12.5px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script src="workflows.js"></script>
+<script>
+const W = window.Workflows;
+let DATA = null;          // loaded from data/data.json
+let CURRENT_USER = null;  // simulated signed-in user
+let route = { name: 'dashboard', param: null };
+let modal = null;         // { type, ... }
+
+// ---- Load -------------------------------------------------------------------
+async function boot() {
+  try {
+    const res = await fetch('data/data.json', { cache: 'no-store' });
+    DATA = await res.json();
+  } catch (e) {
+    document.getElementById('app').innerHTML =
+      '<main><h2>Could not load data</h2><p>Ensure data/data.json is present.</p></main>';
+    return;
+  }
+  applyTheme(DATA.meta.theme);
+  CURRENT_USER = DATA.users.find(u => W.isAdmin(u.roleKey)) || DATA.users[0];
+  render();
+}
+function applyTheme(t) {
+  if (!t) return;
+  const r = document.documentElement.style;
+  const map = { primary:'--primary', accent:'--accent', background:'--bg', surface:'--surface',
+    surface2:'--surface2', border:'--border', foreground:'--fg', muted:'--muted' };
+  Object.entries(map).forEach(([k,v]) => { if (t[k]) r.setProperty(v, t[k]); });
+}
+
+// ---- Helpers ----------------------------------------------------------------
+const enums = () => DATA.enums;
+const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const roleLabel = (k) => enums().userRole[k] || 'Unmapped';
+const projStatusLabel = (k) => enums().projectStatus[k] || '—';
+const taskStatusLabel = (k) => enums().taskStatus[k] || '—';
+const taskPriorityLabel = (k) => enums().taskPriority[k] || '—';
+const fmtDate = (d) => d ? new Date(d+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
+const userById = (id) => DATA.users.find(u => u.id === id);
+const projectById = (id) => DATA.projects.find(p => p.id === id);
+const taskById = (id) => DATA.tasks.find(t => t.id === id);
+function go(name, param=null){ route = { name, param }; window.scrollTo(0,0); render(); }
+function statusBadge(k, label){ return `<span class="badge" style="background:${W.statusColor(k)}">${esc(label)}</span>`; }
+function priorityBadge(k){ return `<span class="badge" style="background:${W.priorityColor(k)}">${esc(taskPriorityLabel(k))}</span>`; }
+
+// ---- Render root ------------------------------------------------------------
+function render() {
+  const role = CURRENT_USER.roleKey;
+  const app = document.getElementById('app');
+  const navItems = [
+    { name:'dashboard', label:'Dashboard', show:W.canViewDashboard(role) },
+    { name:'projects', label:'Projects', show:W.canViewProjectList(role) },
+    { name:'my-tasks', label:'My Tasks', show:W.canViewMyTasks(role) },
+    { name:'contributions', label:'Member Contributions', show:W.canViewMemberContributions(role) },
+    { name:'users', label:'Users', show:W.canViewUsersAdmin(role) },
+  ].filter(i => i.show);
+
+  // If current route is not allowed for this role, fall back to dashboard.
+  const allowedNames = new Set(navItems.map(i=>i.name).concat(['project','task','project-form','task-form']));
+  if (!allowedNames.has(route.name)) route = { name:'dashboard', param:null };
+
+  app.innerHTML = `
+    <aside>
+      <div class="brand">
+        <div class="shield">MDT</div>
+        <div><h1>Project Manager</h1><small>Delivery portfolio</small></div>
+      </div>
+      <nav>
+        ${navItems.map(i => `<button class="${route.name===i.name?'active':''}" onclick="go('${i.name}')">${i.label}</button>`).join('')}
+      </nav>
+      <div class="who">
+        Signed in as
+        <select onchange="switchUser(this.value)">
+          ${DATA.users.map(u => `<option value="${u.id}" ${u.id===CURRENT_USER.id?'selected':''}>${esc(u.title)}</option>`).join('')}
+        </select>
+        <div class="rolechip" style="margin-top:8px">${esc(roleLabel(CURRENT_USER.roleKey))}</div>
+      </div>
+    </aside>
+    <main>${renderPage()}</main>`;
+}
+
+function switchUser(id){ CURRENT_USER = userById(Number(id)); go('dashboard'); }
+
+function renderPage() {
+  switch (route.name) {
+    case 'dashboard': return pageDashboard();
+    case 'projects': return pageProjects();
+    case 'project': return pageProjectDetail(route.param);
+    case 'project-form': return pageProjectForm(route.param);
+    case 'task': return pageTaskDetail(route.param);
+    case 'task-form': return pageTaskForm(route.param);
+    case 'my-tasks': return pageMyTasks();
+    case 'contributions': return pageContributions();
+    case 'users': return pageUsers();
+    default: return pageDashboard();
+  }
+}
+
+// ---- Dashboard --------------------------------------------------------------
+function pageDashboard() {
+  const k = W.dashboardKpis(DATA);
+  const coverage = W.projectLeadCoverage(DATA);
+  const upcoming = W.upcomingTasks(DATA, 6);
+  const recent = [...DATA.projects].slice(-4).reverse();
+  return `
+    <div class="page-head"><div><h2>Dashboard</h2><p>Portfolio overview and upcoming work.</p></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="n">${k.totalProjects}</div><div class="l">Projects</div></div>
+      <div class="kpi"><div class="n">${k.activeProjects}</div><div class="l">In progress</div></div>
+      <div class="kpi"><div class="n">${k.openTasks}</div><div class="l">Open tasks</div></div>
+      <div class="kpi warn"><div class="n">${k.overdueTasks}</div><div class="l">Overdue tasks</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>Project lead coverage</h3>
+        ${coverage.length ? `<table><tbody>${coverage.map(c=>`
+          <tr><td>${esc(c.lead.title)}</td><td style="text-align:right;color:var(--muted)">${c.count} project${c.count>1?'s':''}</td></tr>`).join('')}</tbody></table>`
+          : `<div class="empty">No leads assigned.</div>`}
+      </div>
+      <div class="card">
+        <h3>Upcoming tasks</h3>
+        ${upcoming.length ? `<table><tbody>${upcoming.map(t=>`
+          <tr>
+            <td><span class="linklike" onclick="go('task',${t.id})">${esc(t.title)}</span>${W.isTaskOverdue(t)?'<span class="overdue">Overdue</span>':''}</td>
+            <td style="text-align:right;color:var(--muted)">${fmtDate(t.dueDate)}</td>
+          </tr>`).join('')}</tbody></table>`
+          : `<div class="empty">Nothing upcoming.</div>`}
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h3>Recent projects</h3>
+      <table>
+        <thead><tr><th>Project</th><th>Lead</th><th>Status</th><th>Progress</th></tr></thead>
+        <tbody>${recent.map(p=>{ const pr=W.projectProgress(DATA,p.id); return `
+          <tr>
+            <td><span class="linklike" onclick="go('project',${p.id})">${esc(p.title)}</span></td>
+            <td>${p.projectLead?esc(p.projectLead.title):'<span style="color:var(--muted)">Unassigned</span>'}</td>
+            <td>${statusBadge(p.statusKey, projStatusLabel(p.statusKey))}</td>
+            <td style="color:var(--muted)">${pr.done}/${pr.total} (${pr.pct}%)</td>
+          </tr>`;}).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ---- Projects list ----------------------------------------------------------
+let projFilter = { status:'', lead:'' };
+function pageProjects() {
+  const role = CURRENT_USER.roleKey;
+  let list = DATA.projects;
+  if (projFilter.status) list = list.filter(p=>p.statusKey===projFilter.status);
+  if (projFilter.lead) list = list.filter(p=>p.projectLead && String(p.projectLead.id)===projFilter.lead);
+  const leads = DATA.users.filter(u=>W.isProjectLead(u.roleKey)||W.isAdmin(u.roleKey));
+  return `
+    <div class="page-head">
+      <div><h2>Projects</h2><p>All delivery projects with status and lead.</p></div>
+      ${W.canCreateProject(role)?`<button class="btn" onclick="go('project-form','new')">+ New project</button>`:''}
+    </div>
+    <div class="toolbar">
+      <select onchange="projFilter.status=this.value;render()">
+        <option value="">All statuses</option>
+        ${Object.entries(enums().projectStatus).map(([k,v])=>`<option value="${k}" ${projFilter.status===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <select onchange="projFilter.lead=this.value;render()">
+        <option value="">All leads</option>
+        ${leads.map(u=>`<option value="${u.id}" ${projFilter.lead===String(u.id)?'selected':''}>${esc(u.title)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Project</th><th>Lead</th><th>Status</th><th>Start</th><th>End</th><th>Progress</th></tr></thead>
+        <tbody>${list.length?list.map(p=>{const pr=W.projectProgress(DATA,p.id);return `
+          <tr>
+            <td><span class="linklike" onclick="go('project',${p.id})">${esc(p.title)}</span></td>
+            <td>${p.projectLead?esc(p.projectLead.title):'<span style="color:var(--muted)">Unassigned</span>'}</td>
+            <td>${statusBadge(p.statusKey, projStatusLabel(p.statusKey))}</td>
+            <td>${fmtDate(p.startDate)}</td><td>${fmtDate(p.endDate)}</td>
+            <td style="color:var(--muted)">${pr.pct}%</td>
+          </tr>`;}).join(''):`<tr><td colspan="6"><div class="empty">No projects match.</div></td></tr>`}</tbody>
+      </table>
+    </div>`;
+}
+
+// ---- Project detail ---------------------------------------------------------
+function pageProjectDetail(id) {
+  const role = CURRENT_USER.roleKey;
+  const p = projectById(Number(id));
+  if (!p) return `<p>Project not found. <span class="linklike" onclick="go('projects')">Back</span></p>`;
+  const tasks = DATA.tasks.filter(t=>t.associatedProject && t.associatedProject.id===p.id);
+  const pr = W.projectProgress(DATA, p.id);
+  const cols = [['StatusKey0','Not Started'],['StatusKey1','In Progress'],['StatusKey2','Completed']];
+  return `
+    <span class="backlink" onclick="go('projects')">&larr; Projects</span>
+    <div class="page-head">
+      <div>
+        <h2>${esc(p.title)}</h2>
+        <p class="metaline">Lead: ${p.projectLead?esc(p.projectLead.title):'Unassigned'} &middot; ${fmtDate(p.startDate)} → ${fmtDate(p.endDate)} &middot; ${projStatusLabel(p.statusKey)}</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${W.canCreateTask(role)?`<button class="btn" onclick="go('task-form','new:${p.id}')">+ Task</button>`:''}
+        ${W.canEditProject(role)?`<button class="btn ghost" onclick="go('project-form',${p.id})">Edit</button>`:''}
+        ${W.canDeleteProject(role)?`<button class="btn danger" onclick="deleteProject(${p.id})">Delete</button>`:''}
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="n">${pr.total}</div><div class="l">Tasks</div></div>
+      <div class="kpi"><div class="n">${pr.done}</div><div class="l">Completed</div></div>
+      <div class="kpi"><div class="n">${pr.pct}%</div><div class="l">Progress</div></div>
+      <div class="kpi warn"><div class="n">${tasks.filter(W.isTaskOverdue).length}</div><div class="l">Overdue</div></div>
+    </div>
+    <div class="kanban">
+      ${cols.map(([k,label])=>`
+        <div class="col">
+          <h4>${label} (${tasks.filter(t=>t.statusKey===k).length})</h4>
+          ${tasks.filter(t=>t.statusKey===k).map(t=>taskCardHtml(t)).join('') || '<div class="empty" style="padding:10px">—</div>'}
+        </div>`).join('')}
+    </div>`;
+}
+function taskCardHtml(t) {
+  return `<div class="taskcard" onclick="go('task',${t.id})">
+    <div class="t">${esc(t.title)}${W.isTaskOverdue(t)?'<span class="overdue">Overdue</span>':''}</div>
+    <div class="meta">${priorityBadge(t.priorityKey)}<span style="color:var(--muted);font-size:12px">${t.assignedTo?esc(t.assignedTo.title):'Unassigned'}</span></div>
+  </div>`;
+}
+
+// ---- Task detail ------------------------------------------------------------
+function pageTaskDetail(id) {
+  const role = CURRENT_USER.roleKey;
+  const t = taskById(Number(id));
+  if (!t) return `<p>Task not found. <span class="linklike" onclick="go('projects')">Back</span></p>`;
+  return `
+    <span class="backlink" onclick="go('project',${t.associatedProject.id})">&larr; ${esc(t.associatedProject.title)}</span>
+    <div class="page-head">
+      <div>
+        <h2>${esc(t.title)}${W.isTaskOverdue(t)?'<span class="overdue">Overdue</span>':''}</h2>
+        <p class="metaline">${esc(t.associatedProject.title)}</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${W.canEditTask(role)?`<button class="btn ghost" onclick="go('task-form',${t.id})">Edit</button>`:''}
+        ${W.canDeleteTask(role)?`<button class="btn danger" onclick="deleteTask(${t.id})">Delete</button>`:''}
+      </div>
+    </div>
+    <div class="card">
+      <table><tbody>
+        <tr><th>Status</th><td>${statusBadge(t.statusKey, taskStatusLabel(t.statusKey))}</td></tr>
+        <tr><th>Priority</th><td>${priorityBadge(t.priorityKey)}</td></tr>
+        <tr><th>Assigned to</th><td>${t.assignedTo?esc(t.assignedTo.title):'Unassigned'}</td></tr>
+        <tr><th>Due date</th><td>${fmtDate(t.dueDate)}</td></tr>
+        <tr><th>Completion date</th><td>${fmtDate(t.completionDate)}</td></tr>
+        <tr><th>Details</th><td>${t.taskDetailsInstructions?esc(t.taskDetailsInstructions):'<span style="color:var(--muted)">—</span>'}</td></tr>
+      </tbody></table>
+    </div>`;
+}
+
+// ---- My Tasks ---------------------------------------------------------------
+let myFilter = { status:'', priority:'' };
+function pageMyTasks() {
+  const me = W.resolveDirectoryUser(DATA.users, CURRENT_USER) || CURRENT_USER;
+  let list = W.tasksForUser(DATA.tasks, me);
+  if (myFilter.status) list = list.filter(t=>t.statusKey===myFilter.status);
+  if (myFilter.priority) list = list.filter(t=>t.priorityKey===myFilter.priority);
+  list = list.sort((a,b)=> (W.parseDateOnly(a.dueDate)||Infinity) - (W.parseDateOnly(b.dueDate)||Infinity));
+  return `
+    <div class="page-head"><div><h2>My Tasks</h2><p>Tasks assigned to ${esc(me.title)}.</p></div></div>
+    <div class="toolbar">
+      <select onchange="myFilter.status=this.value;render()">
+        <option value="">All statuses</option>
+        ${Object.entries(enums().taskStatus).map(([k,v])=>`<option value="${k}" ${myFilter.status===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <select onchange="myFilter.priority=this.value;render()">
+        <option value="">All priorities</option>
+        ${Object.entries(enums().taskPriority).map(([k,v])=>`<option value="${k}" ${myFilter.priority===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Task</th><th>Project</th><th>Priority</th><th>Status</th><th>Due</th></tr></thead>
+        <tbody>${list.length?list.map(t=>`
+          <tr>
+            <td><span class="linklike" onclick="go('task',${t.id})">${esc(t.title)}</span>${W.isTaskOverdue(t)?'<span class="overdue">Overdue</span>':''}</td>
+            <td style="color:var(--muted)">${esc(t.associatedProject.title)}</td>
+            <td>${priorityBadge(t.priorityKey)}</td>
+            <td>${statusBadge(t.statusKey, taskStatusLabel(t.statusKey))}</td>
+            <td>${fmtDate(t.dueDate)}</td>
+          </tr>`).join(''):`<tr><td colspan="5"><div class="empty">No tasks assigned to you.</div></td></tr>`}</tbody>
+      </table>
+    </div>`;
+}
+
+// ---- Member contributions (admin) ------------------------------------------
+function pageContributions() {
+  const members = DATA.users.filter(u=>W.isMember(u.roleKey));
+  const rows = members.map(m=>{
+    const ts = W.tasksForUser(DATA.tasks, m);
+    return { name:m.title, total:ts.length, done:ts.filter(t=>t.statusKey==='StatusKey2').length, overdue:ts.filter(W.isTaskOverdue).length };
+  });
+  return `
+    <div class="page-head"><div><h2>Member Contributions</h2><p>Task load and completion by member.</p></div></div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Member</th><th>Assigned</th><th>Completed</th><th>Overdue</th></tr></thead>
+        <tbody>${rows.length?rows.map(r=>`
+          <tr><td>${esc(r.name)}</td><td>${r.total}</td><td>${r.done}</td>
+          <td style="color:${r.overdue?'#e07a7a':'var(--muted)'}">${r.overdue}</td></tr>`).join('')
+          :`<tr><td colspan="4"><div class="empty">No members.</div></td></tr>`}</tbody>
+      </table>
+    </div>`;
+}
+
+// ---- Users admin ------------------------------------------------------------
+let userSearch = '', userRoleFilter = '';
+function pageUsers() {
+  let list = DATA.users;
+  if (userRoleFilter) list = list.filter(u=>u.roleKey===userRoleFilter);
+  if (userSearch) { const q=userSearch.toLowerCase(); list=list.filter(u=>u.title.toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)); }
+  return `
+    <div class="page-head">
+      <div><h2>Users</h2><p>Manage directory users, roles, and project membership.</p></div>
+      <button class="btn" onclick="openUserModal(null)">+ New user</button>
+    </div>
+    <div class="toolbar">
+      <input placeholder="Search name or email" value="${esc(userSearch)}" oninput="userSearch=this.value;render()" style="min-width:220px"/>
+      <select onchange="userRoleFilter=this.value;render()">
+        <option value="">All roles</option>
+        ${Object.entries(enums().userRole).map(([k,v])=>`<option value="${k}" ${userRoleFilter===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Membership</th><th></th></tr></thead>
+        <tbody>${list.map(u=>`
+          <tr>
+            <td>${esc(u.title)}</td>
+            <td style="color:var(--muted)">${esc(u.email||'—')}</td>
+            <td><span class="rolechip">${esc(roleLabel(u.roleKey))}</span></td>
+            <td style="color:var(--muted)">${u.projectMembership?esc(u.projectMembership.title):'—'}</td>
+            <td style="text-align:right;white-space:nowrap">
+              <button class="btn ghost sm" onclick="openUserModal(${u.id})">Edit</button>
+              <button class="btn danger sm" onclick="deleteUser(${u.id})" ${u.id===CURRENT_USER.id?'disabled':''}>Delete</button>
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    ${modal && modal.type==='user' ? userModalHtml() : ''}`;
+}
+
+// ---- Project form -----------------------------------------------------------
+function pageProjectForm(param) {
+  const isNew = param==='new';
+  const p = isNew ? { title:'', statusKey:'StatusKey0', startDate:'', endDate:'', projectLead:null } : projectById(Number(param));
+  if (!p) return `<p>Not found.</p>`;
+  const leads = DATA.users.filter(u=>W.isProjectLead(u.roleKey)||W.isAdmin(u.roleKey));
+  return `
+    <span class="backlink" onclick="go('${isNew?'projects':'project'}'${isNew?'':','+p.id})">&larr; Back</span>
+    <div class="page-head"><div><h2>${isNew?'New project':'Edit project'}</h2></div></div>
+    <div class="card" style="max-width:640px">
+      <div id="formErrs"></div>
+      <label>Title</label><input id="f_title" value="${esc(p.title)}" style="width:100%"/>
+      <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Start date</label><input id="f_start" type="date" value="${esc(p.startDate)}" style="width:100%"/></div>
+        <div><label>End date</label><input id="f_end" type="date" value="${esc(p.endDate||'')}" style="width:100%"/></div>
+      </div>
+      <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Status</label><select id="f_status" style="width:100%">
+          ${Object.entries(enums().projectStatus).map(([k,v])=>`<option value="${k}" ${p.statusKey===k?'selected':''}>${v}</option>`).join('')}
+        </select></div>
+        <div><label>Project lead</label><select id="f_lead" style="width:100%">
+          <option value="">Unassigned</option>
+          ${leads.map(u=>`<option value="${u.id}" ${p.projectLead&&p.projectLead.id===u.id?'selected':''}>${esc(u.title)}</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" onclick="go('${isNew?'projects':'project'}'${isNew?'':','+p.id})">Cancel</button>
+        <button class="btn" onclick="saveProject(${isNew?'null':p.id})">Save</button>
+      </div>
+    </div>`;
+}
+function saveProject(id) {
+  const leadId = document.getElementById('f_lead').value;
+  const rec = {
+    title: document.getElementById('f_title').value,
+    startDate: document.getElementById('f_start').value,
+    endDate: document.getElementById('f_end').value || null,
+    statusKey: document.getElementById('f_status').value,
+    projectLead: leadId ? { id:Number(leadId), title:userById(Number(leadId)).title } : null,
+  };
+  const errs = W.validateProject(rec);
+  if (errs.length) { document.getElementById('formErrs').innerHTML = `<div class="errs">${errs.map(esc).join('<br>')}</div>`; return; }
+  if (id==null) { rec.id = ++DATA.sequences.project; DATA.projects.push(rec); }
+  else { Object.assign(projectById(id), rec); }
+  reconcileReferences();
+  go('project', rec.id ?? id);
+}
+function deleteProject(id) {
+  if (!confirm('Delete this project and unlink its tasks?')) return;
+  DATA.projects = DATA.projects.filter(p=>p.id!==id);
+  DATA.tasks = DATA.tasks.filter(t=>t.associatedProject.id!==id);
+  go('projects');
+}
+
+// ---- Task form --------------------------------------------------------------
+function pageTaskForm(param) {
+  const role = CURRENT_USER.roleKey;
+  const isNew = String(param).startsWith('new');
+  let presetProject = null;
+  if (isNew && String(param).includes(':')) presetProject = Number(String(param).split(':')[1]);
+  const t = isNew
+    ? { title:'', associatedProject: presetProject?{id:presetProject,title:projectById(presetProject).title}:null,
+        assignedTo:null, statusKey:'StatusKey0', priorityKey:'PriorityKey1', dueDate:'', completionDate:null, taskDetailsInstructions:'' }
+    : taskById(Number(param));
+  if (!t) return `<p>Not found.</p>`;
+  const memberOnly = W.canUpdateTaskMemberFields(role) && !W.canUpdateTaskCoreFields(role);
+  const backTo = isNew ? (presetProject?`go('project',${presetProject})`:`go('projects')`) : `go('task',${t.id})`;
+  return `
+    <span class="backlink" onclick="${backTo}">&larr; Back</span>
+    <div class="page-head"><div><h2>${isNew?'New task':'Edit task'}</h2>${memberOnly?'<p class="metaline">As a Member you can update status and completion date.</p>':''}</div></div>
+    <div class="card" style="max-width:660px">
+      <div id="formErrs"></div>
+      <label>Title</label><input id="f_title" value="${esc(t.title)}" style="width:100%" ${memberOnly?'disabled':''}/>
+      <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Project</label><select id="f_project" style="width:100%" ${memberOnly?'disabled':''}>
+          <option value="">Select…</option>
+          ${DATA.projects.map(p=>`<option value="${p.id}" ${t.associatedProject&&t.associatedProject.id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}
+        </select></div>
+        <div><label>Assigned to</label><select id="f_assignee" style="width:100%" ${memberOnly?'disabled':''}>
+          <option value="">Unassigned</option>
+          ${DATA.users.map(u=>`<option value="${u.id}" ${t.assignedTo&&t.assignedTo.id===u.id?'selected':''}>${esc(u.title)}</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Priority</label><select id="f_priority" style="width:100%" ${memberOnly?'disabled':''}>
+          ${Object.entries(enums().taskPriority).map(([k,v])=>`<option value="${k}" ${t.priorityKey===k?'selected':''}>${v}</option>`).join('')}
+        </select></div>
+        <div><label>Status</label><select id="f_status" style="width:100%">
+          ${Object.entries(enums().taskStatus).map(([k,v])=>`<option value="${k}" ${t.statusKey===k?'selected':''}>${v}</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Due date</label><input id="f_due" type="date" value="${esc(t.dueDate||'')}" style="width:100%" ${memberOnly?'disabled':''}/></div>
+        <div><label>Completion date</label><input id="f_completion" type="date" value="${esc(t.completionDate||'')}" style="width:100%"/></div>
+      </div>
+      <label>Details / instructions</label>
+      <textarea id="f_details" rows="3" style="width:100%" ${memberOnly?'disabled':''}>${esc(t.taskDetailsInstructions||'')}</textarea>
+      <div class="modal-actions">
+        <button class="btn ghost" onclick="${backTo}">Cancel</button>
+        <button class="btn" onclick="saveTask(${isNew?'null':t.id})">Save</button>
+      </div>
+    </div>`;
+}
+function saveTask(id) {
+  const role = CURRENT_USER.roleKey;
+  const memberOnly = W.canUpdateTaskMemberFields(role) && !W.canUpdateTaskCoreFields(role);
+  const existing = id!=null ? taskById(id) : null;
+  let rec;
+  if (memberOnly && existing) {
+    // Members may only change status + completion date.
+    rec = { ...existing,
+      statusKey: document.getElementById('f_status').value,
+      completionDate: document.getElementById('f_completion').value || null };
+  } else {
+    const pid = document.getElementById('f_project').value;
+    const aid = document.getElementById('f_assignee').value;
+    rec = {
+      title: document.getElementById('f_title').value,
+      associatedProject: pid ? { id:Number(pid), title:projectById(Number(pid)).title } : null,
+      assignedTo: aid ? { id:Number(aid), title:userById(Number(aid)).title } : null,
+      priorityKey: document.getElementById('f_priority').value,
+      statusKey: document.getElementById('f_status').value,
+      dueDate: document.getElementById('f_due').value || null,
+      completionDate: document.getElementById('f_completion').value || null,
+      taskDetailsInstructions: document.getElementById('f_details').value,
+    };
+  }
+  const errs = W.validateTask(rec);
+  if (errs.length) { document.getElementById('formErrs').innerHTML = `<div class="errs">${errs.map(esc).join('<br>')}</div>`; return; }
+  if (id==null) { rec.id = ++DATA.sequences.task; DATA.tasks.push(rec); go('task', rec.id); }
+  else { Object.assign(existing, rec); go('task', id); }
+}
+function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  const pid = taskById(id).associatedProject.id;
+  DATA.tasks = DATA.tasks.filter(t=>t.id!==id);
+  go('project', pid);
+}
+
+// ---- User modal -------------------------------------------------------------
+function openUserModal(id){ modal = { type:'user', id }; render(); }
+function closeModal(){ modal = null; render(); }
+function userModalHtml() {
+  const u = modal.id!=null ? userById(modal.id) : { title:'', email:'', roleKey:'RoleKey2', projectMembership:null };
+  return `
+    <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3>${modal.id!=null?'Edit user':'New user'}</h3>
+        <div id="userErrs"></div>
+        <label>Name</label><input id="u_title" value="${esc(u.title)}" style="width:100%"/>
+        <label>Email</label><input id="u_email" value="${esc(u.email||'')}" style="width:100%"/>
+        <div class="row">
+          <div><label>Role</label><select id="u_role" style="width:100%">
+            ${Object.entries(enums().userRole).map(([k,v])=>`<option value="${k}" ${u.roleKey===k?'selected':''}>${v}</option>`).join('')}
+          </select></div>
+          <div><label>Project membership</label><select id="u_project" style="width:100%">
+            <option value="">None</option>
+            ${DATA.projects.map(p=>`<option value="${p.id}" ${u.projectMembership&&u.projectMembership.id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}
+          </select></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn" onclick="saveUser(${modal.id!=null?modal.id:'null'})">Save</button>
+        </div>
+      </div>
+    </div>`;
+}
+function saveUser(id) {
+  const pid = document.getElementById('u_project').value;
+  const rec = {
+    title: document.getElementById('u_title').value.trim(),
+    email: document.getElementById('u_email').value.trim(),
+    roleKey: document.getElementById('u_role').value,
+    projectMembership: pid ? { id:Number(pid), title:projectById(Number(pid)).title } : null,
+  };
+  if (!rec.title) { document.getElementById('userErrs').innerHTML = `<div class="errs">Name is required.</div>`; return; }
+  if (id==null) { rec.id = ++DATA.sequences.user; DATA.users.push(rec); }
+  else { Object.assign(userById(id), rec); if (CURRENT_USER.id===id) CURRENT_USER = userById(id); }
+  modal = null; render();
+}
+function deleteUser(id) {
+  if (id===CURRENT_USER.id) return;
+  if (!confirm('Delete this user?')) return;
+  DATA.users = DATA.users.filter(u=>u.id!==id);
+  render();
+}
+
+// Keep denormalised title references in sync after edits.
+function reconcileReferences() {
+  DATA.tasks.forEach(t=>{
+    if (t.associatedProject){ const p=projectById(t.associatedProject.id); if(p) t.associatedProject.title=p.title; }
+    if (t.assignedTo){ const u=userById(t.assignedTo.id); if(u) t.assignedTo.title=u.title; }
+  });
+  DATA.projects.forEach(p=>{ if(p.projectLead){ const u=userById(p.projectLead.id); if(u) p.projectLead.title=u.title; } });
+}
+
+boot();
+</script>
+</body>
+</html>
