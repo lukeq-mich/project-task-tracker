@@ -157,6 +157,15 @@
       "infoUrl": null,
       "projectLead": null,
       "id": 105
+    },
+    {
+      "title": "project test",
+      "startDate": "2026-06-30",
+      "endDate": null,
+      "statusKey": "StatusKey0",
+      "infoUrl": null,
+      "projectLead": null,
+      "id": 106
     }
   ],
   "tasks": [
@@ -262,7 +271,7 @@
   ],
   "sequences": {
     "user": 7,
-    "project": 105,
+    "project": 106,
     "task": 206
   }
 }
