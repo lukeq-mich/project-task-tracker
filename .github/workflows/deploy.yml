@@ -1,0 +1,44 @@
+name: Deploy MDT Project Manager to GitHub Pages
+
+on:
+  # Runs on every push to main so the site republishes automatically
+  # after any edit to the app or its data/data.json source of truth.
+  push:
+    branches: ["main"]
+  # Lets you re-run the deployment manually from the Actions tab.
+  workflow_dispatch:
+
+# Permissions required by the official GitHub Pages deploy actions.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deployments at once; always finish the latest one.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site files
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # The whole repository root is the site — index.html, workflows.js
+          # and data/data.json are all served as-is.
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
