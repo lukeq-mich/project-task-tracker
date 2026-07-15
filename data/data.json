@@ -17,7 +17,7 @@
   },
   "auth": {
     "passwordSalt": "pt-static-salt-v1",
-    "googleClientId": "",
+    "googleClientId": "497835835974-11lvma8hs7pq1qlkikp03it0fvhtlv6l.apps.googleusercontent.com",
     "allowedDomain": "umich.edu",
     "adminEmails": ["lukeq@umich.edu"]
   },
