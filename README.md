@@ -62,16 +62,40 @@ Admins get a **Settings** page:
 
 - **Logo & favicon** — upload a custom image used as the site logo (upper left) and browser favicon.
 - **Theme colours** — customize the full palette (primary, accent, background, surfaces, borders, text), with one-click reset to the default theme.
-- **GitHub sync** — repository + fine-grained token (Contents: read/write, this repo only). With a token set, **every change (projects, tasks, users) is automatically committed back to `data/data.json`** in the repository — this is how new projects and tasks are written into the data folder and shared with everyone — and cover images are committed to `cover-images/`. Commits are debounced so rapid edits become one commit. The token lives in the browser's local storage — use minimal scope and revoke when unsure.
+- **Shared sync (Cloudflare Worker)** — a Worker URL, not a raw token. With it set, **every signed-in user's changes** — projects, tasks, users, cover images — are committed to the repository (`data/data.json` and `cover-images/`), not just one browser's local copy. See "Shared sync via Cloudflare Worker" below for what this is and how to deploy it.
 - **Reset local data** — clears this browser's local changes and reloads the current `data/data.json` from the repository.
 
-## Where data lives — important limitation
+## Where data lives
 
-This is a **static site with no backend**. Accounts, sign-ins, promotions, and edits are stored in the **browser's `localStorage`**, seeded from `data/data.json` on first load:
+By default this is a **static site with no backend**: accounts, sign-ins, promotions, and edits are stored in the **browser's `localStorage`**, seeded from `data/data.json` on first load, and don't leave that browser/device.
 
-- Without a GitHub token, changes persist **on that browser/device only**. With a token configured in Settings (typically the admin's browser), all changes are committed to `data/data.json` in the repository and become the shared seed everyone else loads. Changes made in browsers *without* a token remain local to them.
-- Client-side checks (the Google domain restriction) are honest gates for a personal/demo tracker, **not** production security.
-- For genuinely shared, private, multi-user data, a backend (e.g. a hosted database with real auth) is required — see the repository issues/discussion for the data-privacy plan.
+**Shared sync via Cloudflare Worker** closes that gap without a full backend rebuild. A small Worker (deployed once, free tier) sits between the app and GitHub:
+
+- The site already signs everyone in with Google. When a signed-in user saves something, the app sends their **Google ID token** to the Worker along with the change.
+- The Worker **independently re-verifies that ID token** against Google's public keys — checking it's genuine, unexpired, verified, and on the `@umich.edu` domain — before writing anything.
+- Only then does the Worker commit to `data/data.json` (or `cover-images/`) using a GitHub token that is configured **only inside the Worker** and is never sent to any browser.
+
+This means every signed-in user's edits reach the repository, while the GitHub credential itself stays server-side and out of reach of anyone inspecting the page or its network traffic. It's a genuine, verified write path — not "paste a shared secret into the app."
+
+### Deploying the Worker
+
+The Worker source is in [`worker/worker.js`](worker/worker.js).
+
+1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com) (Cloudflare Workers, not Pages).
+2. **Workers & Pages → Create → Create Worker.** Give it a name (e.g. `project-task-tracker-sync`), click **Deploy** to scaffold it.
+3. Click **Edit code**, delete the placeholder content, and paste in the contents of `worker/worker.js`. Click **Deploy**.
+4. Go to the Worker's **Settings → Variables and Secrets** and add:
+   - `GITHUB_TOKEN` (secret) — a fine-grained GitHub PAT, **Contents: Read and write**, scoped to this repository only.
+   - `GITHUB_REPO` — `lukeq-mich/project-task-tracker`
+   - `GOOGLE_CLIENT_ID` — the same client ID used in `auth.googleClientId`
+   - `ALLOWED_DOMAIN` — `umich.edu`
+   - `ALLOWED_ORIGIN` — `https://lukeq-mich.github.io`
+5. Copy the Worker's URL (shown at the top of its page, formatted like `https://project-task-tracker-sync.<your-subdomain>.workers.dev`).
+6. On the site, sign in as an Admin → **Settings** → **Shared sync** → paste the Worker URL → **Save**.
+
+Once set, every signed-in user's create/edit/delete actions sync to the repository automatically (debounced so rapid edits become one commit). Anyone without network access to a configured Worker URL — or whose Google token fails verification — simply can't write to the repo; their session still works locally.
+
+If the Worker URL isn't set, the app falls back to the local-only behavior described above.
 
 ## Editing seed content
 

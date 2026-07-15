@@ -133,8 +133,8 @@ const W = window.Workflows;
 const STORE_KEY = 'projectTracker.state.v1';
 const SESSION_KEY = 'projectTracker.session.v1';
 const SETTINGS_KEY = 'projectTracker.settings.v1';
-let DATA = null, CURRENT_USER = null, modal = null;
-let SETTINGS = { logoDataUrl:null, theme:{}, githubToken:'', repo:'lukeq-mich/project-task-tracker' };
+let DATA = null, CURRENT_USER = null, modal = null, GOOGLE_ID_TOKEN = null;
+let SETTINGS = { logoDataUrl:null, theme:{}, workerUrl:'' };
 let route = { name: 'dashboard', param: null };
 let COVER_PENDING = null; // { dataUrl, name } staged on the project form
 
@@ -166,29 +166,26 @@ function loadJson(k){ try { const s = localStorage.getItem(k); return s ? JSON.p
 function saveJson(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
 function persist(){ saveJson(STORE_KEY, { users:DATA.users, projects:DATA.projects, tasks:DATA.tasks, sequences:DATA.sequences }); scheduleRepoSync(); }
 
-// ---- Repo write-back: with a GitHub token, every change is committed to data/data.json ----
+// ---- Repo write-back via the Cloudflare Worker proxy (no GitHub token ever touches the browser) ----
 let syncTimer = null, lastSync = '';
 function scheduleRepoSync() {
-  if (!SETTINGS.githubToken || !SETTINGS.repo) return;
+  if (!SETTINGS.workerUrl) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(syncToRepo, 1500); // debounce rapid edits into one commit
 }
 async function syncToRepo() {
+  if (!GOOGLE_ID_TOKEN) { lastSync = 'Sync skipped: sign in with Google to enable shared sync.'; return; }
   try {
-    const content = JSON.stringify({
+    const data = {
       meta: DATA.meta, auth: DATA.auth, enums: DATA.enums,
       users: DATA.users, projects: DATA.projects, tasks: DATA.tasks, sequences: DATA.sequences
-    }, null, 2);
-    const b64 = btoa(unescape(encodeURIComponent(content)));
-    const headers = { 'Authorization':'Bearer '+SETTINGS.githubToken, 'Accept':'application/vnd.github+json' };
-    let sha;
-    const g = await fetch(`https://api.github.com/repos/${SETTINGS.repo}/contents/data/data.json`, { headers });
-    if (g.ok) sha = (await g.json()).sha;
-    const res = await fetch(`https://api.github.com/repos/${SETTINGS.repo}/contents/data/data.json`, {
-      method:'PUT', headers,
-      body: JSON.stringify({ message:'Update data from app', content:b64, ...(sha?{sha}:{}) })
+    };
+    const res = await fetch(SETTINGS.workerUrl.replace(/\/$/,'') + '/sync', {
+      method:'POST',
+      headers: { 'Authorization':'Bearer '+GOOGLE_ID_TOKEN, 'Content-Type':'application/json' },
+      body: JSON.stringify({ data }),
     });
-    if (!res.ok) throw new Error('HTTP '+res.status);
+    if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error || ('HTTP '+res.status)); }
     lastSync = 'Synced ' + new Date().toLocaleTimeString();
   } catch (e) {
     console.warn('Repo sync failed:', e.message);
@@ -196,8 +193,8 @@ async function syncToRepo() {
   }
 }
 function persistSettings(){ saveJson(SETTINGS_KEY, SETTINGS); }
-function setSession(id){ saveJson(SESSION_KEY, { userId:id }); CURRENT_USER = userById(id); }
-function clearSession(){ try { localStorage.removeItem(SESSION_KEY); } catch(e){} CURRENT_USER = null; }
+function setSession(id, googleIdToken){ saveJson(SESSION_KEY, { userId:id }); CURRENT_USER = userById(id); if (googleIdToken) GOOGLE_ID_TOKEN = googleIdToken; }
+function clearSession(){ try { localStorage.removeItem(SESSION_KEY); } catch(e){} CURRENT_USER = null; GOOGLE_ID_TOKEN = null; }
 function resetData(){
   if (!confirm('Reset all local data back to the seeded sample content? This clears signups and changes made on this browser.')) return;
   try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(SESSION_KEY); } catch(e){}
@@ -404,7 +401,7 @@ function onGoogleCredential(resp) {
     };
     DATA.users.push(u); persist();
   }
-  setSession(u.id); authErr = ''; go('dashboard');
+  setSession(u.id, resp.credential); authErr = ''; go('dashboard');
 }
 
 // ---- Dashboard ------------------------------------------------------------------
@@ -774,11 +771,10 @@ function pageSettings() {
     </div>
 
     <div class="card" style="margin-bottom:18px">
-      <h3>GitHub sync</h3>
-      <div class="note">Optional. With a fine-grained GitHub token (Contents: Read &amp; write on this repo only), every change — projects, tasks, users — is automatically committed to <code>data/data.json</code> in the repository (shared with everyone via the site), and cover images are committed to <code>cover-images/</code>. Without a token, changes stay in this browser only. <strong>Warning:</strong> the token is kept in this browser's local storage — use a minimal-scope token and revoke it if in doubt.</div>
-      <div class="setrow"><span class="lbl">Repository</span><input id="s_repo" value="${esc(SETTINGS.repo)}" style="min-width:280px"/></div>
-      <div class="setrow"><span class="lbl">Token</span><input id="s_token" type="password" value="${esc(SETTINGS.githubToken)}" style="min-width:280px" placeholder="github_pat_…"/></div>
-      <div class="setrow"><button class="btn sm" onclick="SETTINGS.repo=val('s_repo').trim();SETTINGS.githubToken=val('s_token').trim();persistSettings();persist();alert('Saved. Data will sync to the repository.')">Save</button></div>
+      <h3>Shared sync (Cloudflare Worker)</h3>
+      <div class="note">Once a Worker URL is set here, <strong>every signed-in user's changes</strong> — projects, tasks, users, cover images — are written to the repository, not just this browser. The Worker independently verifies each person's Google sign-in before writing, so the GitHub credential itself is never exposed to any browser. See the README for deployment steps.</div>
+      <div class="setrow"><span class="lbl">Worker URL</span><input id="s_worker" value="${esc(SETTINGS.workerUrl)}" style="min-width:320px" placeholder="https://your-worker.your-subdomain.workers.dev"/></div>
+      <div class="setrow"><button class="btn sm" onclick="SETTINGS.workerUrl=val('s_worker').trim();persistSettings();persist();alert('Saved. Data will sync to the repository through the Worker.')">Save</button></div>
       ${lastSync?`<div class="metaline" style="margin-top:8px">${esc(lastSync)}</div>`:''}
     </div>
 
@@ -822,7 +818,7 @@ function pageProjectForm(param) {
       <label>Cover image</label>
       <input type="file" accept="image/*" onchange="stageCover(this.files[0])"/>
       ${preview?`<img class="coverprev" src="${preview}"/><div style="margin-top:6px"><button class="btn ghost sm" onclick="clearCover(${isNew?'null':p.id})">Remove cover</button></div>`:''}
-      ${SETTINGS.githubToken?'':'<div class="note">No GitHub token set (Settings), so the cover is stored in this browser only — not committed to the repository.</div>'}
+      ${SETTINGS.workerUrl?'':'<div class="note">No shared sync configured (Settings), so the cover is stored in this browser only — not committed to the repository.</div>'}
       <div class="modal-actions">
         <button class="btn ghost" onclick="go('${isNew?'projects':'project'}'${isNew?'':','+p.id})">Cancel</button>
         <button class="btn" onclick="saveProject(${isNew?'null':p.id})">Save</button>
@@ -833,19 +829,16 @@ function stageCover(file){ if(!file) return; readFileAsDataUrl(file, url => { CO
 function clearCover(id){ COVER_PENDING = null; if(id!=null){ const p=projectById(id); if(p) p.coverImage=null; persist(); } render(); }
 
 async function uploadCoverToRepo(filename, dataUrl) {
-  const token = SETTINGS.githubToken, repo = SETTINGS.repo;
-  if (!token || !repo) return null;
-  const base64 = dataUrl.split(',')[1];
-  const safe = filename.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const path = 'cover-images/' + Date.now() + '-' + safe;
-  const headers = { 'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json' };
-  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-    method:'PUT', headers,
-    body: JSON.stringify({ message:'Upload cover image '+safe, content: base64 })
+  if (!SETTINGS.workerUrl) return null;
+  if (!GOOGLE_ID_TOKEN) throw new Error('Sign in with Google to upload shared cover images');
+  const res = await fetch(SETTINGS.workerUrl.replace(/\/$/,'') + '/upload', {
+    method:'POST',
+    headers: { 'Authorization':'Bearer '+GOOGLE_ID_TOKEN, 'Content-Type':'application/json' },
+    body: JSON.stringify({ filename, dataUrl }),
   });
-  if (!res.ok) throw new Error('GitHub upload failed ('+res.status+')');
+  if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error || ('HTTP '+res.status)); }
   const j = await res.json();
-  return j.content.download_url;
+  return j.url;
 }
 
 async function saveProject(id) {
@@ -876,7 +869,7 @@ async function saveProject(id) {
 
   // Cover image handling.
   if (COVER_PENDING) {
-    if (SETTINGS.githubToken) {
+    if (SETTINGS.workerUrl) {
       try {
         const url = await uploadCoverToRepo(COVER_PENDING.name, COVER_PENDING.dataUrl);
         rec.coverImage = { url };
