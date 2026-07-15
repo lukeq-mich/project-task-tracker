@@ -1,4 +1,4 @@
-# Project Tracker
+# Project Task Tracker
 
 A general-purpose workspace for tracking projects and tasks across a delivery portfolio. Self-contained static site — no database, no server, no build step. All content lives in a single JSON file, and all business rules live in a single workflows file.
 
