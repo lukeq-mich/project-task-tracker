@@ -22,16 +22,6 @@ The app opens on a sign-in screen.
 - **Password login** — for the seeded demo accounts (all use password `demo1234`): `avery.chen@example.com` (Admin), `grace.lin@example.com` (Executive), `bruno.diaz@example.com` (Project Lead), `dev.okoro@example.com` (Member).
 - Manual email/password **registration has been removed**; new accounts come from Google sign-in only.
 
-### Enabling Google sign-in
-
-Google sign-in requires a (free) OAuth client ID:
-
-1. In [Google Cloud Console](https://console.cloud.google.com/) create a project → **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**.
-2. Add the site's origin (e.g. `https://lukeq-mich.github.io`) to **Authorized JavaScript origins**.
-3. Paste the client ID into `auth.googleClientId` in `data/data.json`, and put your own umich address into `auth.adminEmails`, then push.
-
-Note: the domain restriction is enforced client-side (verified-email + hosted-domain checks on the Google credential). That's a genuine gate for normal use, but a static site cannot do server-side enforcement — see "Where data lives" below.
-
 ## Roles
 
 Four roles. **Admin** and **Executive** are identical except that only Admins manage users and site settings.
