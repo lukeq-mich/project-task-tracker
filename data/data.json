@@ -19,7 +19,7 @@
     "passwordSalt": "pt-static-salt-v1",
     "googleClientId": "",
     "allowedDomain": "umich.edu",
-    "adminEmails": []
+    "adminEmails": [lukeq@umich.edu]
   },
   "enums": {
     "projectStatus": {
