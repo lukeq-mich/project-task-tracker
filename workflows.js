@@ -12,8 +12,8 @@
  *   Admin        - full access, including creating/editing/deleting users.
  *   Executive    - identical to Admin EXCEPT cannot manage users.
  *   Project Lead - create/edit/delete tasks in projects; no project or user admin.
- *   Member       - update the status/completion of tasks assigned to them.
- *   Viewer       - read-only access to dashboards, projects, and tasks.
+ *   Member       - update the status/completion of tasks assigned to them;
+ *                  the default role for anyone who signs up.
  *
  * Exposed on window.Workflows so index.html can call it with no build step.
  */
@@ -26,19 +26,29 @@
     EXEC: 'RoleKey1',
     LEAD: 'RoleKey2',
     MEMBER: 'RoleKey3',
-    VIEWER: 'RoleKey4',
   };
 
   const isAdmin       = (roleKey) => roleKey === ROLE.ADMIN;
   const isExecutive   = (roleKey) => roleKey === ROLE.EXEC;
   const isProjectLead = (roleKey) => roleKey === ROLE.LEAD;
   const isMember      = (roleKey) => roleKey === ROLE.MEMBER;
-  const isViewer      = (roleKey) => roleKey === ROLE.VIEWER;
 
   // Admins and Executives share the same permissions except user management.
   const isAdminOrExec = (roleKey) => isAdmin(roleKey) || isExecutive(roleKey);
   const hasAppAccess  = (roleKey) =>
-    isAdmin(roleKey) || isExecutive(roleKey) || isProjectLead(roleKey) || isMember(roleKey) || isViewer(roleKey);
+    isAdmin(roleKey) || isExecutive(roleKey) || isProjectLead(roleKey) || isMember(roleKey);
+
+  // ---- Sign-up policy ------------------------------------------------------
+  // Everyone who registers starts as a Member; an admin can promote them later.
+  const signupRole = () => ROLE.MEMBER;
+
+  function validateSignup({ name, email, password }) {
+    const errs = [];
+    if (!name || !name.trim()) errs.push('Name is required.');
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) errs.push('A valid email is required.');
+    if (!password || password.length < 6) errs.push('Password must be at least 6 characters.');
+    return errs;
+  }
 
   // ---- Page visibility -----------------------------------------------------
   const canViewDashboard           = (r) => hasAppAccess(r);
@@ -177,7 +187,8 @@
 
   window.Workflows = {
     ROLE,
-    isAdmin, isExecutive, isProjectLead, isMember, isViewer, isAdminOrExec, hasAppAccess,
+    isAdmin, isExecutive, isProjectLead, isMember, isAdminOrExec, hasAppAccess,
+    signupRole, validateSignup,
     canViewDashboard, canViewProjectList, canViewProjectDetail, canViewTaskDetail,
     canViewMyTasks, canViewMemberContributions, canViewUsersAdmin,
     canCreateProject, canEditProject, canDeleteProject,

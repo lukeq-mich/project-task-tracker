@@ -1,6 +1,6 @@
 # Project Task Tracker
 
-A general-purpose workspace for tracking projects and tasks across a delivery portfolio. Self-contained static site — no database, no server, no build step. All content lives in a single JSON file, and all business rules live in a single workflows file.
+A general-purpose workspace for tracking projects and tasks across a delivery portfolio. Self-contained static site — no server and no build step. Content lives in a single JSON file, business rules live in a single workflows file, and sign-ups persist in the browser.
 
 **Live site:** `https://lukeq-mich.github.io/project-task-tracker/`
 
@@ -8,47 +8,64 @@ A general-purpose workspace for tracking projects and tasks across a delivery po
 
 | File | Role |
 |---|---|
-| `index.html` | The whole app UI — dashboard, projects (list + kanban detail), tasks, My Tasks, member contributions, and the users admin. Role-gated navigation. |
-| `workflows.js` | All business rules and workflows: role-based access control, task-overdue detection, priority/status colour mapping, dashboard KPI + project-lead coverage computation, and validation. |
-| `data/data.json` | The single source of truth for all content — users, projects, tasks, enums, and site/theme meta. |
-| `.github/workflows/deploy.yml` | Deploys the site to GitHub Pages on every push to `main`. |
+| `index.html` | The whole app UI plus the login/registration gate and local persistence. Role-gated navigation. |
+| `workflows.js` | All business rules: role-based access control, the sign-up policy, task-overdue detection, colour mapping, dashboard KPIs, and validation. |
+| `data/data.json` | Seed content and configuration — users, projects, tasks, enums, theme, and the `auth` block (password salt + admin-code hash). |
+| `.github/workflows/deploy.yml` | Deploys to GitHub Pages on every push to `main`. |
 | `favicon.svg` | Browser-tab icon. |
 
-Separating data (`data.json`) and rules (`workflows.js`) from the interface (`index.html`) mirrors the pattern used in the companion portfolio repo. The app name, theme, and branding are all driven from `data.json`, so it can be re-skinned for any organisation without touching code.
+## Accounts, sign-up, and roles
 
-## Content model
+The app opens on a **Log in / Register** screen.
 
-Records are linked by ID with denormalised titles for display:
+- **Register** creates a new account. Everyone starts as a **Member**; an admin can promote them later from the Users page.
+- To register **as an Admin**, enter the **admin registration code** on the Register form. The default code is **`make-me-admin`** — change it before real use (see below).
+- **Log in** with email + password.
 
-- **Users** — `title`, `email`, `roleKey`, optional `projectMembership`.
-- **Projects** — `title`, `statusKey`, `startDate`, `endDate`, optional `projectLead`.
-- **Tasks** — `title`, `associatedProject`, optional `assignedTo`, `statusKey`, `priorityKey`, `dueDate`, `completionDate`, `taskDetailsInstructions`.
+Demo accounts are seeded so you can see each role immediately. They all share the password **`demo1234`**:
 
-## Roles & permissions (defined in `workflows.js`)
+| Email | Role |
+|---|---|
+| avery.chen@example.com | Admin |
+| grace.lin@example.com | Executive |
+| bruno.diaz@example.com | Project Lead |
+| dev.okoro@example.com | Member |
 
-There are five roles. **Admin** and **Executive** are identical except that only Admins can manage users.
+There are **four roles**. **Admin** and **Executive** are identical except that only Admins can manage users.
 
-| Capability | Admin | Executive | Project Lead | Member | Viewer |
-|---|:---:|:---:|:---:|:---:|:---:|
-| View dashboard / projects / tasks / My Tasks | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Member contributions | ✓ | ✓ | | | |
-| Create / edit / delete projects | ✓ | ✓ | | | |
-| Create / delete tasks | ✓ | ✓ | ✓ | | |
-| Edit all task fields | ✓ | ✓ | ✓ | | |
-| Update own task status + completion date | | | | ✓ | |
-| Users admin — create / edit / delete users | ✓ | | | | |
+| Capability | Admin | Executive | Project Lead | Member |
+|---|:-:|:-:|:-:|:-:|
+| View dashboards / projects / tasks / My Tasks | ✓ | ✓ | ✓ | ✓ |
+| Member contributions | ✓ | ✓ | | |
+| Create / edit / delete projects | ✓ | ✓ | | |
+| Create / delete + edit all task fields | ✓ | ✓ | ✓ | |
+| Update own task status + completion date | | | | ✓ |
+| Users admin — create / edit / delete + promote users | ✓ | | | |
 
-Use the **Signed in as** selector in the sidebar to switch between users and see how the interface changes per role.
+## Changing the admin code
 
-## Task rules
+The admin code is stored only as a SHA-256 hash in `data/data.json` (`auth.adminCodeHash`), so the plain code is not in the repo. To set your own code, compute its hash and paste it in:
 
-- A task is **overdue** when its due date is in the past and it is not marked Completed.
-- Priority and status badges are colour-mapped (Low → green, Medium → amber, High → orange, Critical → red).
-- **My Tasks** resolves the signed-in user against the Users list (primarily by email) and shows their assigned tasks.
+```bash
+# replace YOUR-NEW-CODE
+printf '%s' 'YOUR-NEW-CODE' | shasum -a 256
+```
 
-## Editing content
+Put the resulting hex string in `auth.adminCodeHash`, commit, and push. Anyone who knows the new code can then self-register as an Admin.
 
-The seeded data in `data/data.json` is sample data. Edit that file directly (or through your own tooling) and push to `main` — the deploy workflow republishes the site automatically. In-app create/edit/delete actions update the in-memory copy for the current session; persisting them back to `data.json` (e.g. via a GitHub-API editor like the portfolio's `admin.html`) is a natural next phase.
+## Important limitation — where data lives
+
+This is a **static site with no backend**. Accounts, sign-ups, promotions, and edits are stored in the **browser's `localStorage`**, seeded from `data/data.json` on first load. That means:
+
+- Changes persist across refreshes **on that browser/device only** — they are **not** shared between users or devices.
+- Passwords are hashed client-side (SHA-256). This is **not** production-grade auth — treat it as a lightweight gate for a personal/demo tracker, not real security.
+- The **Reset demo data** button (Users page, admin only) clears local data and re-seeds from `data.json`.
+
+For genuine multi-user, shared, secure accounts you need a backend — e.g. a hosted auth/database service (Supabase, Firebase) or a small API. That's the natural next step if you outgrow the local version.
+
+## Editing seed content
+
+Edit `data/data.json` and push to `main`; the deploy workflow republishes automatically. Note that a browser which already has local data will keep using it until you hit **Reset demo data** (or clear site data), which re-seeds from the updated file.
 
 ---
 
