@@ -1,13 +1,19 @@
 /*
  * workflows.js
  * ---------------------------------------------------------------------------
- * All business rules and workflows for MDT Project Manager live here, kept
+ * All business rules and workflows for Project Tracker live here, kept
  * separate from the UI (index.html) and the data (data/data.json).
  *
- * Mirrors the original app's access-control and task-state logic:
- *   - Role-based access control (Admin / Project Lead / Member / Viewer)
+ *   - Role-based access control (Admin / Executive / Project Lead / Member / Viewer)
  *   - Task overdue detection and priority/status colour mapping
  *   - Dashboard KPI + project-lead coverage computation
+ *
+ * Roles:
+ *   Admin        - full access, including creating/editing/deleting users.
+ *   Executive    - identical to Admin EXCEPT cannot manage users.
+ *   Project Lead - create/edit/delete tasks in projects; no project or user admin.
+ *   Member       - update the status/completion of tasks assigned to them.
+ *   Viewer       - read-only access to dashboards, projects, and tasks.
  *
  * Exposed on window.Workflows so index.html can call it with no build step.
  */
@@ -15,13 +21,24 @@
   'use strict';
 
   // ---- Role keys -----------------------------------------------------------
-  const ROLE = { ADMIN: 'RoleKey0', LEAD: 'RoleKey1', MEMBER: 'RoleKey2', VIEWER: 'RoleKey3' };
+  const ROLE = {
+    ADMIN: 'RoleKey0',
+    EXEC: 'RoleKey1',
+    LEAD: 'RoleKey2',
+    MEMBER: 'RoleKey3',
+    VIEWER: 'RoleKey4',
+  };
 
   const isAdmin       = (roleKey) => roleKey === ROLE.ADMIN;
+  const isExecutive   = (roleKey) => roleKey === ROLE.EXEC;
   const isProjectLead = (roleKey) => roleKey === ROLE.LEAD;
   const isMember      = (roleKey) => roleKey === ROLE.MEMBER;
   const isViewer      = (roleKey) => roleKey === ROLE.VIEWER;
-  const hasAppAccess  = (roleKey) => isAdmin(roleKey) || isProjectLead(roleKey) || isMember(roleKey) || isViewer(roleKey);
+
+  // Admins and Executives share the same permissions except user management.
+  const isAdminOrExec = (roleKey) => isAdmin(roleKey) || isExecutive(roleKey);
+  const hasAppAccess  = (roleKey) =>
+    isAdmin(roleKey) || isExecutive(roleKey) || isProjectLead(roleKey) || isMember(roleKey) || isViewer(roleKey);
 
   // ---- Page visibility -----------------------------------------------------
   const canViewDashboard           = (r) => hasAppAccess(r);
@@ -29,28 +46,31 @@
   const canViewProjectDetail       = (r) => hasAppAccess(r);
   const canViewTaskDetail          = (r) => hasAppAccess(r);
   const canViewMyTasks             = (r) => hasAppAccess(r);
-  const canViewMemberContributions = (r) => isAdmin(r);
-  const canViewUsersAdmin          = (r) => isAdmin(r);
+  const canViewMemberContributions = (r) => isAdminOrExec(r);
+  const canViewUsersAdmin          = (r) => isAdmin(r); // admins only
 
   // ---- Record-level permissions -------------------------------------------
-  const canCreateProject = (r) => isAdmin(r);
-  const canEditProject   = (r) => isAdmin(r);
-  const canDeleteProject = (r) => isAdmin(r);
+  const canCreateProject = (r) => isAdminOrExec(r);
+  const canEditProject   = (r) => isAdminOrExec(r);
+  const canDeleteProject = (r) => isAdminOrExec(r);
 
-  const canCreateTask = (r) => isAdmin(r) || isProjectLead(r);
-  const canDeleteTask = (r) => isAdmin(r) || isProjectLead(r);
+  const canCreateTask = (r) => isAdminOrExec(r) || isProjectLead(r);
+  const canDeleteTask = (r) => isAdminOrExec(r) || isProjectLead(r);
 
-  // Admins / leads may edit all fields; members may edit only their own task fields.
-  const canUpdateTaskCoreFields   = (r) => isAdmin(r) || isProjectLead(r);
+  // Admins/Execs/Leads may edit all fields; members may edit only their own task fields.
+  const canUpdateTaskCoreFields   = (r) => isAdminOrExec(r) || isProjectLead(r);
   const canUpdateTaskMemberFields = (r) => isMember(r);
   const canEditTask = (r) => canUpdateTaskCoreFields(r) || canUpdateTaskMemberFields(r);
 
+  // User management is admin-only (executives cannot create/edit/delete users).
   const canManageUsers = (r) => isAdmin(r);
+
+  // Who can be assigned as a project lead.
+  const canBeProjectLead = (r) => isAdminOrExec(r) || isProjectLead(r);
 
   // ---- Identity matching (My Tasks) ---------------------------------------
   const norm = (v) => (v == null ? '' : String(v).trim().toLowerCase());
 
-  // Resolve the signed-in directory user from the users list, primarily by email.
   function resolveDirectoryUser(users, identity) {
     if (!identity) return undefined;
     const email = norm(identity.email);
@@ -75,7 +95,7 @@
   }
 
   function isTaskOverdue(task) {
-    if (!task.dueDate || task.statusKey === 'StatusKey2') return false; // completed can't be overdue
+    if (!task.dueDate || task.statusKey === 'StatusKey2') return false;
     const due = parseDateOnly(task.dueDate);
     if (!due) return false;
     const today = new Date();
@@ -84,15 +104,15 @@
   }
 
   const PRIORITY_COLOR = {
-    PriorityKey0: '#3f7d5a', // Low  – green
-    PriorityKey1: '#b8862b', // Medium – amber
-    PriorityKey2: '#c2701c', // High – orange
-    PriorityKey3: '#b23b3b', // Critical – red
+    PriorityKey0: '#3f7d5a',
+    PriorityKey1: '#b8862b',
+    PriorityKey2: '#c2701c',
+    PriorityKey3: '#b23b3b',
   };
   const STATUS_COLOR = {
-    StatusKey0: '#5b6675', // Not Started – grey
-    StatusKey1: '#b8862b', // In Progress – amber
-    StatusKey2: '#3f7d5a', // Completed – green
+    StatusKey0: '#5b6675',
+    StatusKey1: '#b8862b',
+    StatusKey2: '#3f7d5a',
   };
   const priorityColor = (k) => PRIORITY_COLOR[k] || '#5b6675';
   const statusColor   = (k) => STATUS_COLOR[k] || '#5b6675';
@@ -111,7 +131,6 @@
     };
   }
 
-  // Project-lead coverage: how many projects each lead is responsible for.
   function projectLeadCoverage(data) {
     const map = new Map();
     data.projects.forEach((p) => {
@@ -158,12 +177,12 @@
 
   window.Workflows = {
     ROLE,
-    isAdmin, isProjectLead, isMember, isViewer, hasAppAccess,
+    isAdmin, isExecutive, isProjectLead, isMember, isViewer, isAdminOrExec, hasAppAccess,
     canViewDashboard, canViewProjectList, canViewProjectDetail, canViewTaskDetail,
     canViewMyTasks, canViewMemberContributions, canViewUsersAdmin,
     canCreateProject, canEditProject, canDeleteProject,
     canCreateTask, canDeleteTask, canUpdateTaskCoreFields, canUpdateTaskMemberFields,
-    canEditTask, canManageUsers,
+    canEditTask, canManageUsers, canBeProjectLead,
     resolveDirectoryUser, tasksForUser,
     parseDateOnly, isTaskOverdue, priorityColor, statusColor,
     dashboardKpis, projectLeadCoverage, upcomingTasks, projectProgress,

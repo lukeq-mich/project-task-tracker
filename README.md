@@ -1,6 +1,6 @@
-# MDT Project Manager
+# Project Tracker
 
-An internal engineering workspace for tracking projects and tasks across MDT's delivery portfolio. Rebuilt as a self-contained static site — no database, no server, no build step. All content lives in a single JSON file, and all business rules live in a single workflows file.
+A general-purpose workspace for tracking projects and tasks across a delivery portfolio. Self-contained static site — no database, no server, no build step. All content lives in a single JSON file, and all business rules live in a single workflows file.
 
 **Live site:** `https://lukeq-mich.github.io/project-task-tracker/`
 
@@ -9,31 +9,34 @@ An internal engineering workspace for tracking projects and tasks across MDT's d
 | File | Role |
 |---|---|
 | `index.html` | The whole app UI — dashboard, projects (list + kanban detail), tasks, My Tasks, member contributions, and the users admin. Role-gated navigation. |
-| `workflows.js` | All business rules and workflows: role-based access control (Admin / Project Lead / Member / Viewer), task-overdue detection, priority/status colour mapping, dashboard KPI + project-lead coverage computation, and validation. |
+| `workflows.js` | All business rules and workflows: role-based access control, task-overdue detection, priority/status colour mapping, dashboard KPI + project-lead coverage computation, and validation. |
 | `data/data.json` | The single source of truth for all content — users, projects, tasks, enums, and site/theme meta. |
 | `.github/workflows/deploy.yml` | Deploys the site to GitHub Pages on every push to `main`. |
-| `favicon.svg` | Browser-tab icon (MDT shield). |
+| `favicon.svg` | Browser-tab icon. |
 
-Separating data (`data.json`) and rules (`workflows.js`) from the interface (`index.html`) mirrors the pattern used in the companion portfolio repo.
+Separating data (`data.json`) and rules (`workflows.js`) from the interface (`index.html`) mirrors the pattern used in the companion portfolio repo. The app name, theme, and branding are all driven from `data.json`, so it can be re-skinned for any organisation without touching code.
 
 ## Content model
 
-Records are linked by ID with denormalised titles for display, matching the original app's data model:
+Records are linked by ID with denormalised titles for display:
 
-- **Users** — `title`, `email`, `roleKey` (Admin / Project Lead / Member / Viewer), optional `projectMembership`.
+- **Users** — `title`, `email`, `roleKey`, optional `projectMembership`.
 - **Projects** — `title`, `statusKey`, `startDate`, `endDate`, optional `projectLead`.
 - **Tasks** — `title`, `associatedProject`, optional `assignedTo`, `statusKey`, `priorityKey`, `dueDate`, `completionDate`, `taskDetailsInstructions`.
 
 ## Roles & permissions (defined in `workflows.js`)
 
-| Capability | Admin | Project Lead | Member | Viewer |
-|---|:---:|:---:|:---:|:---:|
-| View dashboard / projects / tasks / My Tasks | ✓ | ✓ | ✓ | ✓ |
-| Create / edit / delete projects | ✓ | | | |
-| Create / delete tasks | ✓ | ✓ | | |
-| Edit all task fields | ✓ | ✓ | | |
-| Update own task status + completion date | | | ✓ | |
-| Member contributions & Users admin | ✓ | | | |
+There are five roles. **Admin** and **Executive** are identical except that only Admins can manage users.
+
+| Capability | Admin | Executive | Project Lead | Member | Viewer |
+|---|:---:|:---:|:---:|:---:|:---:|
+| View dashboard / projects / tasks / My Tasks | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Member contributions | ✓ | ✓ | | | |
+| Create / edit / delete projects | ✓ | ✓ | | | |
+| Create / delete tasks | ✓ | ✓ | ✓ | | |
+| Edit all task fields | ✓ | ✓ | ✓ | | |
+| Update own task status + completion date | | | | ✓ | |
+| Users admin — create / edit / delete users | ✓ | | | | |
 
 Use the **Signed in as** selector in the sidebar to switch between users and see how the interface changes per role.
 
@@ -49,4 +52,4 @@ The seeded data in `data/data.json` is sample data. Edit that file directly (or 
 
 ---
 
-Built with plain HTML, CSS, and JavaScript. Dark "Military night" theme (black, steel grey, command blue).
+Built with plain HTML, CSS, and JavaScript. Dark "Midnight" theme.

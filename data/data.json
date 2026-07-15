@@ -1,10 +1,10 @@
 {
   "meta": {
-    "name": "MDT Project Manager",
-    "title": "Internal engineering workspace for tracking projects and tasks across MDT's delivery portfolio.",
+    "name": "Project Tracker",
+    "title": "Track projects and tasks across your delivery portfolio.",
     "updated": "2026-07-15",
     "theme": {
-      "name": "Military night",
+      "name": "Midnight",
       "primary": "#2f5d86",
       "accent": "#4b90c4",
       "background": "#0d1117",
@@ -34,32 +34,34 @@
     },
     "userRole": {
       "RoleKey0": "Admin",
-      "RoleKey1": "Project Lead",
-      "RoleKey2": "Member",
-      "RoleKey3": "Viewer"
+      "RoleKey1": "Executive",
+      "RoleKey2": "Project Lead",
+      "RoleKey3": "Member",
+      "RoleKey4": "Viewer"
     }
   },
   "users": [
-    { "id": 1, "title": "Avery Chen", "email": "avery.chen@mdt.example", "roleKey": "RoleKey0", "projectMembership": null },
-    { "id": 2, "title": "Bruno Diaz", "email": "bruno.diaz@mdt.example", "roleKey": "RoleKey1", "projectMembership": { "id": 101, "title": "Ground Station Upgrade" } },
-    { "id": 3, "title": "Carla Reyes", "email": "carla.reyes@mdt.example", "roleKey": "RoleKey1", "projectMembership": { "id": 102, "title": "SharePoint Hub Migration" } },
-    { "id": 4, "title": "Dev Okoro", "email": "dev.okoro@mdt.example", "roleKey": "RoleKey2", "projectMembership": { "id": 101, "title": "Ground Station Upgrade" } },
-    { "id": 5, "title": "Elin Park", "email": "elin.park@mdt.example", "roleKey": "RoleKey2", "projectMembership": { "id": 102, "title": "SharePoint Hub Migration" } },
-    { "id": 6, "title": "Farah Nasser", "email": "farah.nasser@mdt.example", "roleKey": "RoleKey3", "projectMembership": null }
+    { "id": 1, "title": "Avery Chen", "email": "avery.chen@example.com", "roleKey": "RoleKey0", "projectMembership": null },
+    { "id": 2, "title": "Grace Lin", "email": "grace.lin@example.com", "roleKey": "RoleKey1", "projectMembership": null },
+    { "id": 3, "title": "Bruno Diaz", "email": "bruno.diaz@example.com", "roleKey": "RoleKey2", "projectMembership": { "id": 101, "title": "Website Redesign" } },
+    { "id": 4, "title": "Carla Reyes", "email": "carla.reyes@example.com", "roleKey": "RoleKey2", "projectMembership": { "id": 102, "title": "Mobile App Launch" } },
+    { "id": 5, "title": "Dev Okoro", "email": "dev.okoro@example.com", "roleKey": "RoleKey3", "projectMembership": { "id": 101, "title": "Website Redesign" } },
+    { "id": 6, "title": "Elin Park", "email": "elin.park@example.com", "roleKey": "RoleKey3", "projectMembership": { "id": 102, "title": "Mobile App Launch" } },
+    { "id": 7, "title": "Farah Nasser", "email": "farah.nasser@example.com", "roleKey": "RoleKey4", "projectMembership": null }
   ],
   "projects": [
-    { "id": 101, "title": "Ground Station Upgrade", "statusKey": "StatusKey1", "startDate": "2026-05-01", "endDate": "2026-09-30", "projectLead": { "id": 2, "title": "Bruno Diaz" } },
-    { "id": 102, "title": "SharePoint Hub Migration", "statusKey": "StatusKey1", "startDate": "2026-04-15", "endDate": "2026-08-15", "projectLead": { "id": 3, "title": "Carla Reyes" } },
-    { "id": 103, "title": "Weather Satellite Analytics", "statusKey": "StatusKey0", "startDate": "2026-08-01", "endDate": "2026-12-01", "projectLead": { "id": 2, "title": "Bruno Diaz" } },
-    { "id": 104, "title": "Field Kit Standardisation", "statusKey": "StatusKey2", "startDate": "2026-01-10", "endDate": "2026-04-30", "projectLead": { "id": 3, "title": "Carla Reyes" } }
+    { "id": 101, "title": "Website Redesign", "statusKey": "StatusKey1", "startDate": "2026-05-01", "endDate": "2026-09-30", "projectLead": { "id": 3, "title": "Bruno Diaz" } },
+    { "id": 102, "title": "Mobile App Launch", "statusKey": "StatusKey1", "startDate": "2026-04-15", "endDate": "2026-08-15", "projectLead": { "id": 4, "title": "Carla Reyes" } },
+    { "id": 103, "title": "Data Platform Migration", "statusKey": "StatusKey0", "startDate": "2026-08-01", "endDate": "2026-12-01", "projectLead": { "id": 3, "title": "Bruno Diaz" } },
+    { "id": 104, "title": "Onboarding Revamp", "statusKey": "StatusKey2", "startDate": "2026-01-10", "endDate": "2026-04-30", "projectLead": { "id": 4, "title": "Carla Reyes" } }
   ],
   "tasks": [
-    { "id": 201, "title": "Design antenna mount bracket", "associatedProject": { "id": 101, "title": "Ground Station Upgrade" }, "assignedTo": { "id": 4, "title": "Dev Okoro" }, "statusKey": "StatusKey1", "priorityKey": "PriorityKey2", "dueDate": "2026-07-20", "completionDate": null, "taskDetailsInstructions": "Model the bracket for the new dish and produce a fabrication drawing." },
-    { "id": 202, "title": "Procure low-noise amplifier", "associatedProject": { "id": 101, "title": "Ground Station Upgrade" }, "assignedTo": { "id": 4, "title": "Dev Okoro" }, "statusKey": "StatusKey0", "priorityKey": "PriorityKey3", "dueDate": "2026-07-05", "completionDate": null, "taskDetailsInstructions": "Source and order the LNA within budget." },
-    { "id": 203, "title": "Draft migration runbook", "associatedProject": { "id": 102, "title": "SharePoint Hub Migration" }, "assignedTo": { "id": 5, "title": "Elin Park" }, "statusKey": "StatusKey1", "priorityKey": "PriorityKey1", "dueDate": "2026-07-25", "completionDate": null, "taskDetailsInstructions": "Document the cutover steps and rollback plan." },
-    { "id": 204, "title": "Map legacy permissions", "associatedProject": { "id": 102, "title": "SharePoint Hub Migration" }, "assignedTo": { "id": 5, "title": "Elin Park" }, "statusKey": "StatusKey2", "priorityKey": "PriorityKey1", "dueDate": "2026-06-30", "completionDate": "2026-06-28", "taskDetailsInstructions": "Export and categorise existing site permissions." },
-    { "id": 205, "title": "Prototype pass-prediction chart", "associatedProject": { "id": 103, "title": "Weather Satellite Analytics" }, "assignedTo": null, "statusKey": "StatusKey0", "priorityKey": "PriorityKey0", "dueDate": "2026-08-15", "completionDate": null, "taskDetailsInstructions": "Build a first draft of the satellite pass timeline visual." },
-    { "id": 206, "title": "Write field kit checklist", "associatedProject": { "id": 104, "title": "Field Kit Standardisation" }, "assignedTo": { "id": 4, "title": "Dev Okoro" }, "statusKey": "StatusKey2", "priorityKey": "PriorityKey2", "dueDate": "2026-04-20", "completionDate": "2026-04-18", "taskDetailsInstructions": "Finalise the standard packing checklist for field deployments." }
+    { "id": 201, "title": "Design new homepage layout", "associatedProject": { "id": 101, "title": "Website Redesign" }, "assignedTo": { "id": 5, "title": "Dev Okoro" }, "statusKey": "StatusKey1", "priorityKey": "PriorityKey2", "dueDate": "2026-07-20", "completionDate": null, "taskDetailsInstructions": "Produce the new homepage wireframe and high-fidelity mockup." },
+    { "id": 202, "title": "Audit current analytics", "associatedProject": { "id": 101, "title": "Website Redesign" }, "assignedTo": { "id": 5, "title": "Dev Okoro" }, "statusKey": "StatusKey0", "priorityKey": "PriorityKey3", "dueDate": "2026-07-05", "completionDate": null, "taskDetailsInstructions": "Review existing tracking and flag gaps before the redesign." },
+    { "id": 203, "title": "Draft app store listing", "associatedProject": { "id": 102, "title": "Mobile App Launch" }, "assignedTo": { "id": 6, "title": "Elin Park" }, "statusKey": "StatusKey1", "priorityKey": "PriorityKey1", "dueDate": "2026-07-25", "completionDate": null, "taskDetailsInstructions": "Write the copy and prepare screenshots for the store listing." },
+    { "id": 204, "title": "Set up crash reporting", "associatedProject": { "id": 102, "title": "Mobile App Launch" }, "assignedTo": { "id": 6, "title": "Elin Park" }, "statusKey": "StatusKey2", "priorityKey": "PriorityKey1", "dueDate": "2026-06-30", "completionDate": "2026-06-28", "taskDetailsInstructions": "Integrate crash reporting and verify events flow through." },
+    { "id": 205, "title": "Prototype migration pipeline", "associatedProject": { "id": 103, "title": "Data Platform Migration" }, "assignedTo": null, "statusKey": "StatusKey0", "priorityKey": "PriorityKey0", "dueDate": "2026-08-15", "completionDate": null, "taskDetailsInstructions": "Build a first-pass ETL pipeline for the new platform." },
+    { "id": 206, "title": "Write onboarding checklist", "associatedProject": { "id": 104, "title": "Onboarding Revamp" }, "assignedTo": { "id": 5, "title": "Dev Okoro" }, "statusKey": "StatusKey2", "priorityKey": "PriorityKey2", "dueDate": "2026-04-20", "completionDate": "2026-04-18", "taskDetailsInstructions": "Finalise the standard onboarding checklist for new hires." }
   ],
-  "sequences": { "user": 6, "project": 104, "task": 206 }
+  "sequences": { "user": 7, "project": 104, "task": 206 }
 }

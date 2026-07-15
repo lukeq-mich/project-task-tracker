@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MDT Project Manager</title>
+<title>Project Tracker</title>
 <link rel="icon" href="favicon.svg" />
 <style>
   :root {
@@ -132,6 +132,7 @@ async function boot() {
     return;
   }
   applyTheme(DATA.meta.theme);
+  document.title = DATA.meta.name || 'Project Tracker';
   CURRENT_USER = DATA.users.find(u => W.isAdmin(u.roleKey)) || DATA.users[0];
   render();
 }
@@ -145,6 +146,10 @@ function applyTheme(t) {
 
 // ---- Helpers ----------------------------------------------------------------
 const enums = () => DATA.enums;
+function brandInitials() {
+  const words = (DATA.meta.name || 'Project Tracker').trim().split(/\s+/);
+  return words.slice(0,2).map(w => w[0]).join('').toUpperCase();
+}
 const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roleLabel = (k) => enums().userRole[k] || 'Unmapped';
 const projStatusLabel = (k) => enums().projectStatus[k] || '—';
@@ -177,8 +182,8 @@ function render() {
   app.innerHTML = `
     <aside>
       <div class="brand">
-        <div class="shield">MDT</div>
-        <div><h1>Project Manager</h1><small>Delivery portfolio</small></div>
+        <div class="shield">${brandInitials()}</div>
+        <div><h1>${esc(DATA.meta.name)}</h1><small>Delivery portfolio</small></div>
       </div>
       <nav>
         ${navItems.map(i => `<button class="${route.name===i.name?'active':''}" onclick="go('${i.name}')">${i.label}</button>`).join('')}
@@ -264,7 +269,7 @@ function pageProjects() {
   let list = DATA.projects;
   if (projFilter.status) list = list.filter(p=>p.statusKey===projFilter.status);
   if (projFilter.lead) list = list.filter(p=>p.projectLead && String(p.projectLead.id)===projFilter.lead);
-  const leads = DATA.users.filter(u=>W.isProjectLead(u.roleKey)||W.isAdmin(u.roleKey));
+  const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey));
   return `
     <div class="page-head">
       <div><h2>Projects</h2><p>All delivery projects with status and lead.</p></div>
@@ -463,7 +468,7 @@ function pageProjectForm(param) {
   const isNew = param==='new';
   const p = isNew ? { title:'', statusKey:'StatusKey0', startDate:'', endDate:'', projectLead:null } : projectById(Number(param));
   if (!p) return `<p>Not found.</p>`;
-  const leads = DATA.users.filter(u=>W.isProjectLead(u.roleKey)||W.isAdmin(u.roleKey));
+  const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey));
   return `
     <span class="backlink" onclick="go('${isNew?'projects':'project'}'${isNew?'':','+p.id})">&larr; Back</span>
     <div class="page-head"><div><h2>${isNew?'New project':'Edit project'}</h2></div></div>
