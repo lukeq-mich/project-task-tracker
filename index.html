@@ -133,6 +133,7 @@ const W = window.Workflows;
 const STORE_KEY = 'projectTracker.state.v1';
 const SESSION_KEY = 'projectTracker.session.v1';
 const SETTINGS_KEY = 'projectTracker.settings.v1';
+const TOKEN_KEY = 'projectTracker.googleToken.v1';
 let DATA = null, CURRENT_USER = null, modal = null, GOOGLE_ID_TOKEN = null;
 let SETTINGS = { logoDataUrl:null, theme:{}, workerUrl:'' };
 let route = { name: 'dashboard', param: null };
@@ -160,6 +161,7 @@ async function boot() {
   applyBranding();
   const sess = loadJson(SESSION_KEY);
   if (sess) CURRENT_USER = DATA.users.find(u => u.id === sess.userId) || null;
+  try { GOOGLE_ID_TOKEN = sessionStorage.getItem(TOKEN_KEY) || null; } catch(e){}
   render();
 }
 function loadJson(k){ try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
@@ -174,7 +176,7 @@ function scheduleRepoSync() {
   syncTimer = setTimeout(syncToRepo, 1500); // debounce rapid edits into one commit
 }
 async function syncToRepo() {
-  if (!GOOGLE_ID_TOKEN) { lastSync = 'Sync skipped: sign in with Google to enable shared sync.'; return; }
+  if (!GOOGLE_ID_TOKEN) { lastSync = 'Sync skipped: please log out and sign in with Google again to refresh your session.'; if (route.name==='settings') render(); return; }
   try {
     const data = {
       meta: DATA.meta, auth: DATA.auth, enums: DATA.enums,
@@ -185,16 +187,29 @@ async function syncToRepo() {
       headers: { 'Authorization':'Bearer '+GOOGLE_ID_TOKEN, 'Content-Type':'application/json' },
       body: JSON.stringify({ data }),
     });
+    if (res.status === 401) {
+      lastSync = 'Sync failed: your Google sign-in expired. Log out and sign in again, then retry.';
+      if (route.name==='settings') render();
+      return;
+    }
     if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error || ('HTTP '+res.status)); }
     lastSync = 'Synced ' + new Date().toLocaleTimeString();
   } catch (e) {
     console.warn('Repo sync failed:', e.message);
     lastSync = 'Sync failed: ' + e.message;
   }
+  if (route.name==='settings') render();
 }
 function persistSettings(){ saveJson(SETTINGS_KEY, SETTINGS); }
-function setSession(id, googleIdToken){ saveJson(SESSION_KEY, { userId:id }); CURRENT_USER = userById(id); if (googleIdToken) GOOGLE_ID_TOKEN = googleIdToken; }
-function clearSession(){ try { localStorage.removeItem(SESSION_KEY); } catch(e){} CURRENT_USER = null; GOOGLE_ID_TOKEN = null; }
+function setSession(id, googleIdToken){
+  saveJson(SESSION_KEY, { userId:id }); CURRENT_USER = userById(id);
+  if (googleIdToken) { GOOGLE_ID_TOKEN = googleIdToken; try { sessionStorage.setItem(TOKEN_KEY, googleIdToken); } catch(e){} }
+}
+function clearSession(){
+  try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch(e){}
+  CURRENT_USER = null; GOOGLE_ID_TOKEN = null;
+}
 function resetData(){
   if (!confirm('Reset all local data back to the seeded sample content? This clears signups and changes made on this browser.')) return;
   try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(SESSION_KEY); } catch(e){}

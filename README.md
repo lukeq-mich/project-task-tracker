@@ -95,6 +95,8 @@ The Worker source is in [`worker/worker.js`](worker/worker.js).
 
 Once set, every signed-in user's create/edit/delete actions sync to the repository automatically (debounced so rapid edits become one commit). Anyone without network access to a configured Worker URL — or whose Google token fails verification — simply can't write to the repo; their session still works locally.
 
+**A note on session length:** the Google ID token that authorizes each sync is short-lived (about an hour) and is kept in the browser's `sessionStorage`, so it survives page reloads within the same tab/session but not a fresh browser tab or a token past its expiry. If a sync shows "sign in with Google again" in Settings, that's expected — logging out and back in refreshes it. Local saving always still works even when a sync is skipped or fails; only the repository write is affected.
+
 If the Worker URL isn't set, the app falls back to the local-only behavior described above.
 
 ## Editing seed content
