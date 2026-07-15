@@ -161,7 +161,6 @@ async function boot() {
   const sess = loadJson(SESSION_KEY);
   if (sess) CURRENT_USER = DATA.users.find(u => u.id === sess.userId) || null;
   render();
-  if (!CURRENT_USER) initGoogleSignIn();
 }
 function loadJson(k){ try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
 function saveJson(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -232,7 +231,7 @@ function render() {
   let selStart = null;
   if (focusId && typeof active.selectionStart === 'number') selStart = active.selectionStart;
 
-  if (!CURRENT_USER) { app.innerHTML = renderAuth(); mountGsiButton(); return; }
+  if (!CURRENT_USER) { app.innerHTML = renderAuth(); initGoogleSignIn(); return; }
   const role = CURRENT_USER.roleKey;
   const navItems = [
     { name:'dashboard', label:'Dashboard', show:W.canViewDashboard(role) },
@@ -319,12 +318,15 @@ async function doLogin() {
   if (h !== u.passwordHash) { authErr = 'Incorrect password.'; return render(); }
   setSession(u.id); authErr = ''; go('dashboard');
 }
-function doLogout() { clearSession(); route = { name:'dashboard', param:null }; render(); mountGsiButton(); }
+function doLogout() { clearSession(); route = { name:'dashboard', param:null }; render(); }
 
 // Google Identity Services -------------------------------------------------------
-let gsiLoaded = false;
+let gsiLoaded = false, gsiLoading = false;
 function initGoogleSignIn() {
-  if (!DATA.auth || !DATA.auth.googleClientId || gsiLoaded) { mountGsiButton(); return; }
+  if (!DATA.auth || !DATA.auth.googleClientId) return;
+  if (gsiLoaded) { mountGsiButton(); return; }
+  if (gsiLoading) return;
+  gsiLoading = true;
   const s = document.createElement('script');
   s.src = 'https://accounts.google.com/gsi/client';
   s.async = true; s.defer = true;
