@@ -1,72 +1,89 @@
 # Project Task Tracker
 
-A general-purpose workspace for tracking projects and tasks across a delivery portfolio. Self-contained static site — no server and no build step. Content lives in a single JSON file, business rules live in a single workflows file, and sign-ups persist in the browser.
+A general-purpose workspace for tracking projects and tasks across a delivery portfolio. Self-contained static site — no server and no build step. Content lives in a single JSON file, business rules live in a single workflows file, and per-browser changes persist locally.
 
-**Live site:** `https://lukeq-mich.github.io/project-task-tracker/`
+**Live site:** [https://lukeq-mich.github.io/project-task-tracker/](https://lukeq-mich.github.io/project-task-tracker/)
 
 ## How it works
 
 | File | Role |
 |---|---|
-| `index.html` | The whole app UI plus the login/registration gate and local persistence. Role-gated navigation. |
-| `workflows.js` | All business rules: role-based access control, the sign-up policy, task-overdue detection, colour mapping, dashboard KPIs, and validation. |
-| `data/data.json` | Seed content and configuration — users, projects, tasks, enums, theme, and the `auth` block (password salt + admin-code hash). |
+| `index.html` | The whole app UI — sign-in gate, dashboard, projects (card + list views), tasks, My Tasks, member contributions, users admin, and the admin Settings page. |
+| `workflows.js` | All business rules: role-based access control, role-scoped upcoming tasks, one-lead-per-project and one-membership-per-user rules, overdue detection, colour mapping, KPIs, and validation. |
+| `data/data.json` | Seed content and configuration — users, projects, tasks, enums, theme, and the `auth` block (Google client ID, allowed domain, admin emails, password salt for demo accounts). |
+| `cover-images/` | Project cover images uploaded through the app (when a GitHub token is configured in Settings). |
 | `.github/workflows/deploy.yml` | Deploys to GitHub Pages on every push to `main`. |
-| `favicon.svg` | Browser-tab icon. |
 
-## Accounts, sign-up, and roles
+## Signing in
 
-The app opens on a **Log in / Register** screen.
+The app opens on a sign-in screen.
 
-- **Register** creates a new account. Everyone starts as a **Member**; an admin can promote them later from the Users page.
-- To register **as an Admin**, enter the **admin registration code** on the Register form. The default code is **`make-me-admin`** — change it before real use (see below).
-- **Log in** with email + password.
+- **Sign in with Google** — restricted to verified **@umich.edu** accounts. First sign-in automatically registers the account as a **Member**; an admin can promote it afterwards. If the signing email is listed in `auth.adminEmails` in `data/data.json`, the account is created as an **Admin** — this is the reliable way to register yourself as an admin.
+- **Password login** — for the seeded demo accounts (all use password `demo1234`): `avery.chen@example.com` (Admin), `grace.lin@example.com` (Executive), `bruno.diaz@example.com` (Project Lead), `dev.okoro@example.com` (Member).
+- Manual email/password **registration has been removed**; new accounts come from Google sign-in only.
 
-Demo accounts are seeded so you can see each role immediately. They all share the password **`demo1234`**:
+### Enabling Google sign-in
 
-| Email | Role |
-|---|---|
-| avery.chen@example.com | Admin |
-| grace.lin@example.com | Executive |
-| bruno.diaz@example.com | Project Lead |
-| dev.okoro@example.com | Member |
+Google sign-in requires a (free) OAuth client ID:
 
-There are **four roles**. **Admin** and **Executive** are identical except that only Admins can manage users.
+1. In [Google Cloud Console](https://console.cloud.google.com/) create a project → **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**.
+2. Add the site's origin (e.g. `https://lukeq-mich.github.io`) to **Authorized JavaScript origins**.
+3. Paste the client ID into `auth.googleClientId` in `data/data.json`, and put your own umich address into `auth.adminEmails`, then push.
+
+Note: the domain restriction is enforced client-side (verified-email + hosted-domain checks on the Google credential). That's a genuine gate for normal use, but a static site cannot do server-side enforcement — see "Where data lives" below.
+
+## Roles
+
+Four roles. **Admin** and **Executive** are identical except that only Admins manage users and site settings.
 
 | Capability | Admin | Executive | Project Lead | Member |
 |---|:-:|:-:|:-:|:-:|
 | View dashboards / projects / tasks / My Tasks | ✓ | ✓ | ✓ | ✓ |
 | Member contributions | ✓ | ✓ | | |
-| Create / edit / delete projects | ✓ | ✓ | | |
+| Create / edit / delete projects, manage project members | ✓ | ✓ | | |
 | Create / delete + edit all task fields | ✓ | ✓ | ✓ | |
 | Update own task status + completion date | | | | ✓ |
-| Users admin — create / edit / delete + promote users | ✓ | | | |
+| Users admin (create / edit / delete / promote users) | ✓ | | | |
+| Settings (logo, theme, integrations) | ✓ | | | |
 
-## Changing the admin code
+**Role-scoped dashboard:** the "Upcoming tasks" panel shows Members only their own assigned tasks, Project Leads the tasks in projects they lead, and Admins/Executives tasks across all projects.
 
-The admin code is stored only as a SHA-256 hash in `data/data.json` (`auth.adminCodeHash`), so the plain code is not in the repo. To set your own code, compute its hash and paste it in:
+## Projects
 
-```bash
-# replace YOUR-NEW-CODE
-printf '%s' 'YOUR-NEW-CODE' | shasum -a 256
-```
+- **Card and list views** — cards show the project's cover image; the list view intentionally does not.
+- **Cover images** — upload from the project form. With a GitHub token configured in Settings, the image is committed to the repo's `cover-images/` folder (shared with everyone via the site); without one it's stored in the browser only.
+- **Info URL** — each project can link out to an external info page (e.g. a Google Drive folder), shown on the project detail page.
+- **Task progress** is shown as counts (e.g. `3/8 done`) rather than a percentage, since task lists grow over time.
+- **One lead per project-lead** — assigning a lead who already leads another project prompts for confirmation and unassigns them from the previous project.
+- **Members** — each user holds exactly one project-membership slot (an admin's or executive's oversight role is separate from their slot). The project page has a batch **Add members** dialog; selecting people already on another project prompts for confirmation before moving them.
+- **Deleting a project** cascades: all its tasks are deleted and every member's project association resets to none.
 
-Put the resulting hex string in `auth.adminCodeHash`, commit, and push. Anyone who knows the new code can then self-register as an Admin.
+## Tasks
 
-## Important limitation — where data lives
+- A task is **overdue** when its due date is past and it isn't Completed.
+- **My Tasks** supports filtering by status/priority and **sorting by due date** (click the Due column header to toggle ascending/descending).
 
-This is a **static site with no backend**. Accounts, sign-ups, promotions, and edits are stored in the **browser's `localStorage`**, seeded from `data/data.json` on first load. That means:
+## Admin Settings
 
-- Changes persist across refreshes **on that browser/device only** — they are **not** shared between users or devices.
-- Passwords are hashed client-side (SHA-256). This is **not** production-grade auth — treat it as a lightweight gate for a personal/demo tracker, not real security.
-- The **Reset demo data** button (Users page, admin only) clears local data and re-seeds from `data.json`.
+Admins get a **Settings** page:
 
-For genuine multi-user, shared, secure accounts you need a backend — e.g. a hosted auth/database service (Supabase, Firebase) or a small API. That's the natural next step if you outgrow the local version.
+- **Logo & favicon** — upload a custom image used as the site logo (upper left) and browser favicon.
+- **Theme colours** — customize the full palette (primary, accent, background, surfaces, borders, text), with one-click reset to the default theme.
+- **GitHub image uploads** — repository + fine-grained token (Contents: read/write, this repo only) enabling cover-image commits to `cover-images/`. The token lives in the browser's local storage — use minimal scope and revoke when unsure.
+- **Reset demo data** — clears local changes and re-seeds from `data/data.json`.
+
+## Where data lives — important limitation
+
+This is a **static site with no backend**. Accounts, sign-ins, promotions, and edits are stored in the **browser's `localStorage`**, seeded from `data/data.json` on first load:
+
+- Changes persist across refreshes **on that browser/device only** — they are **not** shared between users or devices (except cover images committed to the repo via the GitHub token).
+- Client-side checks (Google domain restriction, password hashing for demo accounts) are honest gates for a personal/demo tracker, **not** production security.
+- For genuinely shared, private, multi-user data, a backend (e.g. a hosted database with real auth) is required — see the repository issues/discussion for the data-privacy plan.
 
 ## Editing seed content
 
-Edit `data/data.json` and push to `main`; the deploy workflow republishes automatically. Note that a browser which already has local data will keep using it until you hit **Reset demo data** (or clear site data), which re-seeds from the updated file.
+Edit `data/data.json` and push to `main`; the deploy workflow republishes automatically. A browser with existing local data keeps using it until **Reset demo data** is used (or site data is cleared), which re-seeds from the updated file.
 
 ---
 
-Built with plain HTML, CSS, and JavaScript. Dark "Midnight" theme.
+Built with plain HTML, CSS, and JavaScript.

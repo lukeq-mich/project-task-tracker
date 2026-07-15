@@ -17,7 +17,9 @@
   },
   "auth": {
     "passwordSalt": "pt-static-salt-v1",
-    "adminCodeHash": "d3baf5e7d8ca8dc6a373d3487fc086dfaa72dcd55c71feee137b264a8a10d1c5"
+    "googleClientId": "",
+    "allowedDomain": "umich.edu",
+    "adminEmails": []
   },
   "enums": {
     "projectStatus": {
@@ -44,26 +46,211 @@
     }
   },
   "users": [
-    { "id": 1, "title": "Avery Chen", "email": "avery.chen@example.com", "roleKey": "RoleKey0", "projectMembership": null, "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004" },
-    { "id": 2, "title": "Grace Lin", "email": "grace.lin@example.com", "roleKey": "RoleKey1", "projectMembership": null, "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004" },
-    { "id": 3, "title": "Bruno Diaz", "email": "bruno.diaz@example.com", "roleKey": "RoleKey2", "projectMembership": { "id": 101, "title": "Website Redesign" }, "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004" },
-    { "id": 4, "title": "Carla Reyes", "email": "carla.reyes@example.com", "roleKey": "RoleKey2", "projectMembership": { "id": 102, "title": "Mobile App Launch" }, "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004" },
-    { "id": 5, "title": "Dev Okoro", "email": "dev.okoro@example.com", "roleKey": "RoleKey3", "projectMembership": { "id": 101, "title": "Website Redesign" }, "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004" },
-    { "id": 6, "title": "Elin Park", "email": "elin.park@example.com", "roleKey": "RoleKey3", "projectMembership": { "id": 102, "title": "Mobile App Launch" }, "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004" }
+    {
+      "id": 1,
+      "title": "Avery Chen",
+      "email": "avery.chen@example.com",
+      "roleKey": "RoleKey0",
+      "projectMembership": null,
+      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+    },
+    {
+      "id": 2,
+      "title": "Grace Lin",
+      "email": "grace.lin@example.com",
+      "roleKey": "RoleKey1",
+      "projectMembership": null,
+      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+    },
+    {
+      "id": 3,
+      "title": "Bruno Diaz",
+      "email": "bruno.diaz@example.com",
+      "roleKey": "RoleKey2",
+      "projectMembership": {
+        "id": 101,
+        "title": "Website Redesign"
+      },
+      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+    },
+    {
+      "id": 4,
+      "title": "Carla Reyes",
+      "email": "carla.reyes@example.com",
+      "roleKey": "RoleKey2",
+      "projectMembership": {
+        "id": 102,
+        "title": "Mobile App Launch"
+      },
+      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+    },
+    {
+      "id": 5,
+      "title": "Dev Okoro",
+      "email": "dev.okoro@example.com",
+      "roleKey": "RoleKey3",
+      "projectMembership": {
+        "id": 101,
+        "title": "Website Redesign"
+      },
+      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+    },
+    {
+      "id": 6,
+      "title": "Elin Park",
+      "email": "elin.park@example.com",
+      "roleKey": "RoleKey3",
+      "projectMembership": {
+        "id": 102,
+        "title": "Mobile App Launch"
+      },
+      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+    }
   ],
   "projects": [
-    { "id": 101, "title": "Website Redesign", "statusKey": "StatusKey1", "startDate": "2026-05-01", "endDate": "2026-09-30", "projectLead": { "id": 3, "title": "Bruno Diaz" } },
-    { "id": 102, "title": "Mobile App Launch", "statusKey": "StatusKey1", "startDate": "2026-04-15", "endDate": "2026-08-15", "projectLead": { "id": 4, "title": "Carla Reyes" } },
-    { "id": 103, "title": "Data Platform Migration", "statusKey": "StatusKey0", "startDate": "2026-08-01", "endDate": "2026-12-01", "projectLead": { "id": 3, "title": "Bruno Diaz" } },
-    { "id": 104, "title": "Onboarding Revamp", "statusKey": "StatusKey2", "startDate": "2026-01-10", "endDate": "2026-04-30", "projectLead": { "id": 4, "title": "Carla Reyes" } }
+    {
+      "id": 101,
+      "title": "Website Redesign",
+      "statusKey": "StatusKey1",
+      "startDate": "2026-05-01",
+      "endDate": "2026-09-30",
+      "projectLead": {
+        "id": 3,
+        "title": "Bruno Diaz"
+      }
+    },
+    {
+      "id": 102,
+      "title": "Mobile App Launch",
+      "statusKey": "StatusKey1",
+      "startDate": "2026-04-15",
+      "endDate": "2026-08-15",
+      "projectLead": {
+        "id": 4,
+        "title": "Carla Reyes"
+      }
+    },
+    {
+      "id": 103,
+      "title": "Data Platform Migration",
+      "statusKey": "StatusKey0",
+      "startDate": "2026-08-01",
+      "endDate": "2026-12-01",
+      "projectLead": null
+    },
+    {
+      "id": 104,
+      "title": "Onboarding Revamp",
+      "statusKey": "StatusKey2",
+      "startDate": "2026-01-10",
+      "endDate": "2026-04-30",
+      "projectLead": null
+    }
   ],
   "tasks": [
-    { "id": 201, "title": "Design new homepage layout", "associatedProject": { "id": 101, "title": "Website Redesign" }, "assignedTo": { "id": 5, "title": "Dev Okoro" }, "statusKey": "StatusKey1", "priorityKey": "PriorityKey2", "dueDate": "2026-07-20", "completionDate": null, "taskDetailsInstructions": "Produce the new homepage wireframe and high-fidelity mockup." },
-    { "id": 202, "title": "Audit current analytics", "associatedProject": { "id": 101, "title": "Website Redesign" }, "assignedTo": { "id": 5, "title": "Dev Okoro" }, "statusKey": "StatusKey0", "priorityKey": "PriorityKey3", "dueDate": "2026-07-05", "completionDate": null, "taskDetailsInstructions": "Review existing tracking and flag gaps before the redesign." },
-    { "id": 203, "title": "Draft app store listing", "associatedProject": { "id": 102, "title": "Mobile App Launch" }, "assignedTo": { "id": 6, "title": "Elin Park" }, "statusKey": "StatusKey1", "priorityKey": "PriorityKey1", "dueDate": "2026-07-25", "completionDate": null, "taskDetailsInstructions": "Write the copy and prepare screenshots for the store listing." },
-    { "id": 204, "title": "Set up crash reporting", "associatedProject": { "id": 102, "title": "Mobile App Launch" }, "assignedTo": { "id": 6, "title": "Elin Park" }, "statusKey": "StatusKey2", "priorityKey": "PriorityKey1", "dueDate": "2026-06-30", "completionDate": "2026-06-28", "taskDetailsInstructions": "Integrate crash reporting and verify events flow through." },
-    { "id": 205, "title": "Prototype migration pipeline", "associatedProject": { "id": 103, "title": "Data Platform Migration" }, "assignedTo": null, "statusKey": "StatusKey0", "priorityKey": "PriorityKey0", "dueDate": "2026-08-15", "completionDate": null, "taskDetailsInstructions": "Build a first-pass ETL pipeline for the new platform." },
-    { "id": 206, "title": "Write onboarding checklist", "associatedProject": { "id": 104, "title": "Onboarding Revamp" }, "assignedTo": { "id": 5, "title": "Dev Okoro" }, "statusKey": "StatusKey2", "priorityKey": "PriorityKey2", "dueDate": "2026-04-20", "completionDate": "2026-04-18", "taskDetailsInstructions": "Finalise the standard onboarding checklist for new hires." }
+    {
+      "id": 201,
+      "title": "Design new homepage layout",
+      "associatedProject": {
+        "id": 101,
+        "title": "Website Redesign"
+      },
+      "assignedTo": {
+        "id": 5,
+        "title": "Dev Okoro"
+      },
+      "statusKey": "StatusKey1",
+      "priorityKey": "PriorityKey2",
+      "dueDate": "2026-07-20",
+      "completionDate": null,
+      "taskDetailsInstructions": "Produce the new homepage wireframe and high-fidelity mockup."
+    },
+    {
+      "id": 202,
+      "title": "Audit current analytics",
+      "associatedProject": {
+        "id": 101,
+        "title": "Website Redesign"
+      },
+      "assignedTo": {
+        "id": 5,
+        "title": "Dev Okoro"
+      },
+      "statusKey": "StatusKey0",
+      "priorityKey": "PriorityKey3",
+      "dueDate": "2026-07-05",
+      "completionDate": null,
+      "taskDetailsInstructions": "Review existing tracking and flag gaps before the redesign."
+    },
+    {
+      "id": 203,
+      "title": "Draft app store listing",
+      "associatedProject": {
+        "id": 102,
+        "title": "Mobile App Launch"
+      },
+      "assignedTo": {
+        "id": 6,
+        "title": "Elin Park"
+      },
+      "statusKey": "StatusKey1",
+      "priorityKey": "PriorityKey1",
+      "dueDate": "2026-07-25",
+      "completionDate": null,
+      "taskDetailsInstructions": "Write the copy and prepare screenshots for the store listing."
+    },
+    {
+      "id": 204,
+      "title": "Set up crash reporting",
+      "associatedProject": {
+        "id": 102,
+        "title": "Mobile App Launch"
+      },
+      "assignedTo": {
+        "id": 6,
+        "title": "Elin Park"
+      },
+      "statusKey": "StatusKey2",
+      "priorityKey": "PriorityKey1",
+      "dueDate": "2026-06-30",
+      "completionDate": "2026-06-28",
+      "taskDetailsInstructions": "Integrate crash reporting and verify events flow through."
+    },
+    {
+      "id": 205,
+      "title": "Prototype migration pipeline",
+      "associatedProject": {
+        "id": 103,
+        "title": "Data Platform Migration"
+      },
+      "assignedTo": null,
+      "statusKey": "StatusKey0",
+      "priorityKey": "PriorityKey0",
+      "dueDate": "2026-08-15",
+      "completionDate": null,
+      "taskDetailsInstructions": "Build a first-pass ETL pipeline for the new platform."
+    },
+    {
+      "id": 206,
+      "title": "Write onboarding checklist",
+      "associatedProject": {
+        "id": 104,
+        "title": "Onboarding Revamp"
+      },
+      "assignedTo": {
+        "id": 5,
+        "title": "Dev Okoro"
+      },
+      "statusKey": "StatusKey2",
+      "priorityKey": "PriorityKey2",
+      "dueDate": "2026-04-20",
+      "completionDate": "2026-04-18",
+      "taskDetailsInstructions": "Finalise the standard onboarding checklist for new hires."
+    }
   ],
-  "sequences": { "user": 6, "project": 104, "task": 206 }
+  "sequences": {
+    "user": 6,
+    "project": 104,
+    "task": 206
+  }
 }

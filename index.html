@@ -4,46 +4,38 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Project Tracker</title>
-<link rel="icon" href="favicon.svg" />
+<link rel="icon" href="favicon.svg" id="faviconLink" />
 <style>
   :root {
     --primary:#2f5d86; --accent:#4b90c4; --bg:#0d1117; --surface:#161b22;
     --surface2:#1c2430; --border:#2b3646; --fg:#e8eef5; --muted:#93a1b3;
   }
   * { box-sizing:border-box; }
-  body {
-    margin:0; background:var(--bg); color:var(--fg);
+  body { margin:0; background:var(--bg); color:var(--fg);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    font-size:14px; line-height:1.5;
-  }
+    font-size:14px; line-height:1.5; }
   a { color:var(--accent); text-decoration:none; }
   a:hover { text-decoration:underline; }
   .app { display:flex; min-height:100vh; }
-  aside {
-    width:230px; background:#0b0f14; border-right:1px solid var(--border);
-    padding:20px 14px; flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto;
-  }
+  aside { width:230px; background:#0b0f14; border-right:1px solid var(--border);
+    padding:20px 14px; flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto; }
   .brand { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-  .brand .shield {
-    width:34px; height:34px; border-radius:7px; flex-shrink:0;
+  .brand .shield { width:34px; height:34px; border-radius:7px; flex-shrink:0; overflow:hidden;
     background:linear-gradient(160deg,var(--primary),#1b3a55);
-    display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:12px;
-  }
+    display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:12px; }
+  .brand .shield img { width:100%; height:100%; object-fit:cover; }
   .brand h1 { font-size:15px; margin:0; line-height:1.2; }
   .brand small { color:var(--muted); font-size:11px; }
   nav { margin-top:22px; display:flex; flex-direction:column; gap:2px; }
-  nav button {
-    text-align:left; background:none; border:none; color:var(--muted); cursor:pointer;
-    padding:9px 11px; border-radius:7px; font-size:13.5px; width:100%; display:flex;
-    align-items:center; gap:9px;
-  }
+  nav button { text-align:left; background:none; border:none; color:var(--muted); cursor:pointer;
+    padding:9px 11px; border-radius:7px; font-size:13.5px; width:100%; display:flex; align-items:center; gap:9px; }
   nav button:hover { background:var(--surface); color:var(--fg); }
   nav button.active { background:var(--primary); color:#fff; }
   .who { margin-top:24px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); }
   .who .name { color:var(--fg); font-weight:600; font-size:13px; }
   .rolechip { display:inline-block; padding:2px 9px; border-radius:5px; font-size:11.5px; background:var(--surface2); border:1px solid var(--border); color:var(--fg); }
   main { flex:1; padding:26px 32px; max-width:1200px; }
-  .page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; }
+  .page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
   .page-head h2 { margin:0 0 4px; font-size:22px; }
   .page-head p { margin:0; color:var(--muted); }
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:26px; }
@@ -58,6 +50,8 @@
   table { width:100%; border-collapse:collapse; }
   th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; }
   th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color:var(--fg); }
   tr:last-child td { border-bottom:none; }
   tbody tr:hover { background:var(--surface2); }
   .badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:600; color:#fff; white-space:nowrap; }
@@ -70,10 +64,9 @@
   .btn:disabled { opacity:.4; cursor:not-allowed; }
   .btn.block { width:100%; }
   .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
-  input,select,textarea {
-    background:var(--surface); color:var(--fg); border:1px solid var(--border);
-    border-radius:7px; padding:8px 10px; font-size:13px; font-family:inherit;
-  }
+  input,select,textarea { background:var(--surface); color:var(--fg); border:1px solid var(--border);
+    border-radius:7px; padding:8px 10px; font-size:13px; font-family:inherit; }
+  input[type=color]{ padding:2px; height:34px; width:52px; cursor:pointer; }
   input:focus,select:focus,textarea:focus { outline:2px solid var(--accent); outline-offset:-1px; }
   label { display:block; font-size:12px; color:var(--muted); margin:12px 0 5px; }
   .kanban { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
@@ -96,14 +89,39 @@
   .backlink { color:var(--muted); cursor:pointer; font-size:13px; margin-bottom:12px; display:inline-block; }
   .backlink:hover { color:var(--fg); }
   .metaline { color:var(--muted); font-size:12.5px; }
+  /* Project cards */
+  .viewtoggle { display:flex; gap:4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:3px; }
+  .viewtoggle button { background:none; border:none; color:var(--muted); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12.5px; }
+  .viewtoggle button.active { background:var(--primary); color:#fff; }
+  .cardgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+  .pcard { background:var(--surface); border:1px solid var(--border); border-radius:11px; overflow:hidden; cursor:pointer; transition:border-color .15s; }
+  .pcard:hover { border-color:var(--accent); }
+  .pcover { height:120px; background:linear-gradient(150deg,var(--surface2),var(--primary)); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; }
+  .pcover img { width:100%; height:100%; object-fit:cover; }
+  .pbody { padding:13px 14px; }
+  .pbody .t { font-weight:600; margin-bottom:6px; }
+  .pbody .m { color:var(--muted); font-size:12px; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+  /* Members */
+  .memberchips { display:flex; flex-wrap:wrap; gap:8px; }
+  .memberchip { display:flex; align-items:center; gap:8px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:4px 6px 4px 12px; font-size:12.5px; }
+  .memberchip button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0 5px; }
+  .memberchip button:hover { color:#e07a7a; }
+  .checkrow { display:flex; align-items:center; gap:9px; padding:7px 4px; border-bottom:1px solid var(--border); font-size:13px; }
+  .checkrow:last-child { border-bottom:none; }
+  .checkrow .sub { color:var(--muted); font-size:11.5px; }
   /* Auth */
   .auth-wrap { min-height:100vh; width:100%; display:flex; align-items:center; justify-content:center; padding:24px; }
   .auth-card { width:100%; max-width:400px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px; }
   .auth-card .brand { justify-content:center; margin-bottom:6px; }
   .auth-sub { text-align:center; color:var(--muted); font-size:12.5px; margin-bottom:20px; }
-  .tabs { display:flex; gap:6px; background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:4px; margin-bottom:8px; }
-  .tab { flex:1; text-align:center; padding:8px; border-radius:6px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:13px; }
-  .tab.active { background:var(--primary); color:#fff; }
+  .divider { display:flex; align-items:center; gap:10px; color:var(--muted); font-size:11px; margin:18px 0 6px; }
+  .divider::before,.divider::after { content:''; flex:1; height:1px; background:var(--border); }
+  #gsiBtn { display:flex; justify-content:center; margin-top:6px; min-height:40px; }
+  /* Settings */
+  .setrow { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:10px 0; }
+  .setrow .lbl { width:130px; color:var(--muted); font-size:12.5px; }
+  .logoprev { width:44px; height:44px; border-radius:9px; border:1px solid var(--border); object-fit:cover; background:var(--surface2); }
+  .coverprev { max-width:280px; max-height:130px; border-radius:8px; border:1px solid var(--border); display:block; margin-top:8px; object-fit:cover; }
 </style>
 </head>
 <body>
@@ -114,22 +132,22 @@
 const W = window.Workflows;
 const STORE_KEY = 'projectTracker.state.v1';
 const SESSION_KEY = 'projectTracker.session.v1';
-let DATA = null;          // { meta, enums, auth, users, projects, tasks, sequences }
-let CURRENT_USER = null;
+const SETTINGS_KEY = 'projectTracker.settings.v1';
+let DATA = null, CURRENT_USER = null, modal = null;
+let SETTINGS = { logoDataUrl:null, theme:{}, githubToken:'', repo:'lukeq-mich/project-task-tracker' };
 let route = { name: 'dashboard', param: null };
-let modal = null;
+let COVER_PENDING = null; // { dataUrl, name } staged on the project form
 
 // ---- Boot / persistence -----------------------------------------------------
 async function boot() {
   let seed;
-  try {
-    seed = await (await fetch('data/data.json', { cache: 'no-store' })).json();
-  } catch (e) {
+  try { seed = await (await fetch('data/data.json', { cache:'no-store' })).json(); }
+  catch (e) {
     document.getElementById('app').innerHTML =
       '<main><h2>Could not load data</h2><p>Ensure data/data.json is present and the page is served over http/https.</p></main>';
     return;
   }
-  const stored = loadStore();
+  const stored = loadJson(STORE_KEY);
   DATA = {
     meta: seed.meta, enums: seed.enums, auth: seed.auth,
     users: stored ? stored.users : seed.users,
@@ -138,42 +156,49 @@ async function boot() {
     sequences: stored ? stored.sequences : seed.sequences,
   };
   if (!stored) persist();
-  applyTheme(DATA.meta.theme);
-  document.title = DATA.meta.name || 'Project Tracker';
-  const sess = loadSession();
+  const s = loadJson(SETTINGS_KEY); if (s) SETTINGS = Object.assign(SETTINGS, s);
+  applyBranding();
+  const sess = loadJson(SESSION_KEY);
   if (sess) CURRENT_USER = DATA.users.find(u => u.id === sess.userId) || null;
   render();
+  if (!CURRENT_USER) initGoogleSignIn();
 }
-function loadStore(){ try { const s = localStorage.getItem(STORE_KEY); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
-function persist(){ try { localStorage.setItem(STORE_KEY, JSON.stringify({ users:DATA.users, projects:DATA.projects, tasks:DATA.tasks, sequences:DATA.sequences })); } catch(e){} }
-function loadSession(){ try { const s = localStorage.getItem(SESSION_KEY); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
-function setSession(id){ try { localStorage.setItem(SESSION_KEY, JSON.stringify({ userId:id })); } catch(e){} CURRENT_USER = userById(id); }
+function loadJson(k){ try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
+function saveJson(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function persist(){ saveJson(STORE_KEY, { users:DATA.users, projects:DATA.projects, tasks:DATA.tasks, sequences:DATA.sequences }); }
+function persistSettings(){ saveJson(SETTINGS_KEY, SETTINGS); }
+function setSession(id){ saveJson(SESSION_KEY, { userId:id }); CURRENT_USER = userById(id); }
 function clearSession(){ try { localStorage.removeItem(SESSION_KEY); } catch(e){} CURRENT_USER = null; }
 function resetData(){
   if (!confirm('Reset all local data back to the seeded sample content? This clears signups and changes made on this browser.')) return;
   try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(SESSION_KEY); } catch(e){}
   location.reload();
 }
-function applyTheme(t) {
-  if (!t) return;
+function applyBranding() {
+  const theme = Object.assign({}, DATA.meta.theme || {}, SETTINGS.theme || {});
   const r = document.documentElement.style;
   const map = { primary:'--primary', accent:'--accent', background:'--bg', surface:'--surface',
     surface2:'--surface2', border:'--border', foreground:'--fg', muted:'--muted' };
-  Object.entries(map).forEach(([k,v]) => { if (t[k]) r.setProperty(v, t[k]); });
+  Object.entries(map).forEach(([k,v]) => { if (theme[k]) r.setProperty(v, theme[k]); });
+  document.title = DATA.meta.name || 'Project Tracker';
+  if (SETTINGS.logoDataUrl) document.getElementById('faviconLink').href = SETTINGS.logoDataUrl;
 }
 
-// ---- Hashing (client-side; see README on security limits) -------------------
+// ---- Hashing ------------------------------------------------------------------
 async function hashText(t) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 const hashPassword = (pw) => hashText((DATA.auth.passwordSalt || '') + ':' + pw);
 
-// ---- Helpers ----------------------------------------------------------------
+// ---- Helpers ------------------------------------------------------------------
 const enums = () => DATA.enums;
 function brandInitials() {
   const words = (DATA.meta.name || 'Project Tracker').trim().split(/\s+/);
   return words.slice(0,2).map(w => w[0]).join('').toUpperCase();
+}
+function brandShieldHtml() {
+  return SETTINGS.logoDataUrl ? `<img src="${SETTINGS.logoDataUrl}" alt="logo"/>` : brandInitials();
 }
 const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const val = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
@@ -186,14 +211,28 @@ const fmtDate = (d) => d ? new Date(d+'T00:00:00').toLocaleDateString(undefined,
 const userById = (id) => DATA.users.find(u => u.id === id);
 const projectById = (id) => DATA.projects.find(p => p.id === id);
 const taskById = (id) => DATA.tasks.find(t => t.id === id);
-function go(name, param=null){ route = { name, param }; window.scrollTo(0,0); render(); }
+function go(name, param=null){ route = { name, param }; COVER_PENDING = null; window.scrollTo(0,0); render(); }
 function statusBadge(k, label){ return `<span class="badge" style="background:${W.statusColor(k)}">${esc(label)}</span>`; }
 function priorityBadge(k){ return `<span class="badge" style="background:${W.priorityColor(k)}">${esc(taskPriorityLabel(k))}</span>`; }
+function coverSrc(p){ return p.coverImage ? (p.coverImage.url || p.coverImage.dataUrl || null) : null; }
+function taskCount(id){ const pr = W.projectProgress(DATA, id); return `${pr.done}/${pr.total} tasks done`; }
+function safeUrl(u){ const s = String(u||'').trim(); return /^https?:\/\//i.test(s) ? s : null; }
+function readFileAsDataUrl(file, cb) {
+  const r = new FileReader();
+  r.onload = () => cb(r.result);
+  r.readAsDataURL(file);
+}
 
-// ---- Render root ------------------------------------------------------------
+// ---- Render root (focus-preserving: fixes the search-bar focus bug) ----------
 function render() {
   const app = document.getElementById('app');
-  if (!CURRENT_USER) { app.innerHTML = renderAuth(); return; }
+  // Capture focus + caret before re-render so typing in filters isn't interrupted.
+  const active = document.activeElement;
+  const focusId = active && active.id ? active.id : null;
+  let selStart = null;
+  if (focusId && typeof active.selectionStart === 'number') selStart = active.selectionStart;
+
+  if (!CURRENT_USER) { app.innerHTML = renderAuth(); mountGsiButton(); return; }
   const role = CURRENT_USER.roleKey;
   const navItems = [
     { name:'dashboard', label:'Dashboard', show:W.canViewDashboard(role) },
@@ -201,6 +240,7 @@ function render() {
     { name:'my-tasks', label:'My Tasks', show:W.canViewMyTasks(role) },
     { name:'contributions', label:'Member Contributions', show:W.canViewMemberContributions(role) },
     { name:'users', label:'Users', show:W.canViewUsersAdmin(role) },
+    { name:'settings', label:'Settings', show:W.isAdmin(role) },
   ].filter(i => i.show);
 
   const allowedNames = new Set(navItems.map(i=>i.name).concat(['project','task','project-form','task-form']));
@@ -209,7 +249,7 @@ function render() {
   app.innerHTML = `
     <aside>
       <div class="brand">
-        <div class="shield">${brandInitials()}</div>
+        <div class="shield">${brandShieldHtml()}</div>
         <div><h1>${esc(DATA.meta.name)}</h1><small>Delivery portfolio</small></div>
       </div>
       <nav>
@@ -223,6 +263,12 @@ function render() {
       </div>
     </aside>
     <main>${renderPage()}</main>`;
+
+  // Restore focus + caret (search inputs etc.)
+  if (focusId) {
+    const el = document.getElementById(focusId);
+    if (el) { el.focus(); if (selStart!=null && el.setSelectionRange) { try { el.setSelectionRange(selStart, selStart); } catch(e){} } }
+  }
 }
 
 function renderPage() {
@@ -236,86 +282,109 @@ function renderPage() {
     case 'my-tasks': return pageMyTasks();
     case 'contributions': return pageContributions();
     case 'users': return pageUsers();
+    case 'settings': return pageSettings();
     default: return pageDashboard();
   }
 }
 
-// ---- Auth screen ------------------------------------------------------------
-let authMode = 'login';
+// ---- Auth ---------------------------------------------------------------------
 let authErr = '';
 function renderAuth() {
+  const gEnabled = !!(DATA.auth && DATA.auth.googleClientId);
   return `
     <div class="auth-wrap">
       <div class="auth-card">
         <div class="brand">
-          <div class="shield">${brandInitials()}</div>
+          <div class="shield">${brandShieldHtml()}</div>
           <div><h1>${esc(DATA.meta.name)}</h1></div>
         </div>
         <div class="auth-sub">${esc(DATA.meta.title||'')}</div>
-        <div class="tabs">
-          <button class="tab ${authMode==='login'?'active':''}" onclick="authMode='login';authErr='';render()">Log in</button>
-          <button class="tab ${authMode==='register'?'active':''}" onclick="authMode='register';authErr='';render()">Register</button>
-        </div>
         ${authErr?`<div class="errs">${esc(authErr)}</div>`:''}
-        ${authMode==='login'?loginForm():registerForm()}
+        ${gEnabled
+          ? `<div id="gsiBtn"></div>
+             <div class="note">Sign in with your <strong>@${esc(DATA.auth.allowedDomain)}</strong> Google account. New sign-ins are registered as Members; an admin can promote you afterwards.</div>`
+          : `<div class="note">Google sign-in isn't configured yet (no client ID in <code>data/data.json</code>). Use a password login below.</div>`}
+        <div class="divider">Password login</div>
+        <label>Email</label><input id="l_email" type="email" style="width:100%" autocomplete="username"/>
+        <label>Password</label><input id="l_pw" type="password" style="width:100%" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <button class="btn block" style="margin-top:16px" onclick="doLogin()">Log in</button>
       </div>
     </div>`;
-}
-function loginForm() {
-  return `
-    <label>Email</label><input id="l_email" type="email" style="width:100%" autocomplete="username"/>
-    <label>Password</label><input id="l_pw" type="password" style="width:100%" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')doLogin()"/>
-    <button class="btn block" style="margin-top:18px" onclick="doLogin()">Log in</button>`;
-}
-function registerForm() {
-  return `
-    <label>Full name</label><input id="r_name" style="width:100%"/>
-    <label>Email</label><input id="r_email" type="email" style="width:100%" autocomplete="username"/>
-    <label>Password</label><input id="r_pw" type="password" style="width:100%" autocomplete="new-password"/>
-    <label>Admin registration code <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
-    <input id="r_code" style="width:100%" placeholder="Leave blank to register as a Member"/>
-    <button class="btn block" style="margin-top:18px" onclick="doRegister()">Create account</button>
-    <div class="note" style="margin-top:14px">New accounts start as <strong>Members</strong>. An admin can promote you later, or enter the admin code to register directly as an Admin.</div>`;
 }
 async function doLogin() {
   const email = val('l_email'), pw = val('l_pw');
   const u = DATA.users.find(x => norm(x.email) === norm(email));
-  if (!u || !u.passwordHash) { authErr = 'No account found for that email.'; return render(); }
+  if (!u || !u.passwordHash) { authErr = 'No password account found for that email.'; return render(); }
   const h = await hashPassword(pw);
   if (h !== u.passwordHash) { authErr = 'Incorrect password.'; return render(); }
   setSession(u.id); authErr = ''; go('dashboard');
 }
-async function doRegister() {
-  const name = val('r_name'), email = val('r_email'), pw = val('r_pw'), code = val('r_code').trim();
-  const errs = W.validateSignup({ name, email, password: pw });
-  if (DATA.users.some(u => norm(u.email) === norm(email))) errs.push('An account with that email already exists.');
-  if (errs.length) { authErr = errs.join(' '); return render(); }
-  let roleKey = W.signupRole();
-  if (code) {
-    const ch = await hashText(code);
-    if (ch === DATA.auth.adminCodeHash) roleKey = W.ROLE.ADMIN;
-    else { authErr = 'That admin code is not valid.'; return render(); }
-  }
-  const rec = {
-    id: ++DATA.sequences.user,
-    title: name.trim(),
-    email: email.trim(),
-    roleKey,
-    projectMembership: null,
-    passwordHash: await hashPassword(pw),
-  };
-  DATA.users.push(rec); persist();
-  setSession(rec.id); authErr = ''; go('dashboard');
-}
-function doLogout() { clearSession(); route = { name:'dashboard', param:null }; render(); }
+function doLogout() { clearSession(); route = { name:'dashboard', param:null }; render(); mountGsiButton(); }
 
-// ---- Dashboard --------------------------------------------------------------
+// Google Identity Services -------------------------------------------------------
+let gsiLoaded = false;
+function initGoogleSignIn() {
+  if (!DATA.auth || !DATA.auth.googleClientId || gsiLoaded) { mountGsiButton(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true; s.defer = true;
+  s.onload = () => {
+    gsiLoaded = true;
+    window.google.accounts.id.initialize({
+      client_id: DATA.auth.googleClientId,
+      hosted_domain: DATA.auth.allowedDomain || undefined,
+      callback: onGoogleCredential,
+    });
+    mountGsiButton();
+  };
+  document.head.appendChild(s);
+}
+function mountGsiButton() {
+  if (!gsiLoaded || CURRENT_USER) return;
+  const target = document.getElementById('gsiBtn');
+  if (target && window.google) {
+    window.google.accounts.id.renderButton(target, { theme:'filled_blue', size:'large', width:340, text:'signin_with' });
+  }
+}
+function decodeJwtPayload(cred) {
+  const b64 = cred.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+  return JSON.parse(decodeURIComponent(atob(b64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+}
+function onGoogleCredential(resp) {
+  let p;
+  try { p = decodeJwtPayload(resp.credential); }
+  catch(e) { authErr = 'Could not read the Google sign-in response.'; return render(); }
+  const domain = DATA.auth.allowedDomain;
+  const email = norm(p.email);
+  const domainOk = (p.hd && norm(p.hd) === norm(domain)) || email.endsWith('@' + norm(domain));
+  if (!p.email_verified || !domainOk) {
+    authErr = `Only verified @${domain} Google accounts can sign in.`;
+    return render();
+  }
+  let u = DATA.users.find(x => norm(x.email) === email);
+  if (!u) {
+    const isBootstrapAdmin = (DATA.auth.adminEmails || []).map(norm).includes(email);
+    u = {
+      id: ++DATA.sequences.user,
+      title: p.name || email,
+      email: p.email,
+      roleKey: isBootstrapAdmin ? W.ROLE.ADMIN : W.signupRole(),
+      projectMembership: null,
+      googleAccount: true,
+    };
+    DATA.users.push(u); persist();
+  }
+  setSession(u.id); authErr = ''; go('dashboard');
+}
+
+// ---- Dashboard ------------------------------------------------------------------
 function pageDashboard() {
   const k = W.dashboardKpis(DATA);
   const coverage = W.projectLeadCoverage(DATA);
-  const upcoming = W.upcomingTasks(DATA, 6);
+  const upcoming = W.upcomingTasksForUser(DATA, CURRENT_USER, 6);
   const recent = [...DATA.projects].slice(-4).reverse();
+  const scopeNote = W.isMember(CURRENT_USER.roleKey) ? ' (assigned to you)'
+    : W.isProjectLead(CURRENT_USER.roleKey) ? ' (in your projects)' : '';
   return `
     <div class="page-head"><div><h2>Dashboard</h2><p>Portfolio overview and upcoming work.</p></div></div>
     <div class="kpis">
@@ -332,32 +401,33 @@ function pageDashboard() {
           : `<div class="empty">No leads assigned.</div>`}
       </div>
       <div class="card">
-        <h3>Upcoming tasks</h3>
+        <h3>Upcoming tasks${scopeNote}</h3>
         ${upcoming.length ? `<table><tbody>${upcoming.map(t=>`
           <tr>
             <td><span class="linklike" onclick="go('task',${t.id})">${esc(t.title)}</span>${W.isTaskOverdue(t)?'<span class="overdue">Overdue</span>':''}</td>
             <td style="text-align:right;color:var(--muted)">${fmtDate(t.dueDate)}</td>
           </tr>`).join('')}</tbody></table>`
-          : `<div class="empty">Nothing upcoming.</div>`}
+          : `<div class="empty">Nothing upcoming${scopeNote}.</div>`}
       </div>
     </div>
     <div class="card" style="margin-top:18px">
       <h3>Recent projects</h3>
       <table>
-        <thead><tr><th>Project</th><th>Lead</th><th>Status</th><th>Progress</th></tr></thead>
+        <thead><tr><th>Project</th><th>Lead</th><th>Status</th><th>Tasks</th></tr></thead>
         <tbody>${recent.map(p=>{ const pr=W.projectProgress(DATA,p.id); return `
           <tr>
             <td><span class="linklike" onclick="go('project',${p.id})">${esc(p.title)}</span></td>
             <td>${p.projectLead?esc(p.projectLead.title):'<span style="color:var(--muted)">Unassigned</span>'}</td>
             <td>${statusBadge(p.statusKey, projStatusLabel(p.statusKey))}</td>
-            <td style="color:var(--muted)">${pr.done}/${pr.total} (${pr.pct}%)</td>
+            <td style="color:var(--muted)">${pr.done}/${pr.total} done</td>
           </tr>`;}).join('')}</tbody>
       </table>
     </div>`;
 }
 
-// ---- Projects list ----------------------------------------------------------
+// ---- Projects list (list + card views) -------------------------------------------
 let projFilter = { status:'', lead:'' };
+let projView = 'cards';
 function pageProjects() {
   const role = CURRENT_USER.roleKey;
   let list = DATA.projects;
@@ -367,7 +437,13 @@ function pageProjects() {
   return `
     <div class="page-head">
       <div><h2>Projects</h2><p>All delivery projects with status and lead.</p></div>
-      ${W.canCreateProject(role)?`<button class="btn" onclick="go('project-form','new')">+ New project</button>`:''}
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="viewtoggle">
+          <button class="${projView==='cards'?'active':''}" onclick="projView='cards';render()">Cards</button>
+          <button class="${projView==='list'?'active':''}" onclick="projView='list';render()">List</button>
+        </div>
+        ${W.canCreateProject(role)?`<button class="btn" onclick="go('project-form','new')">+ New project</button>`:''}
+      </div>
     </div>
     <div class="toolbar">
       <select onchange="projFilter.status=this.value;render()">
@@ -379,35 +455,54 @@ function pageProjects() {
         ${leads.map(u=>`<option value="${u.id}" ${projFilter.lead===String(u.id)?'selected':''}>${esc(u.title)}</option>`).join('')}
       </select>
     </div>
-    <div class="card">
-      <table>
-        <thead><tr><th>Project</th><th>Lead</th><th>Status</th><th>Start</th><th>End</th><th>Progress</th></tr></thead>
-        <tbody>${list.length?list.map(p=>{const pr=W.projectProgress(DATA,p.id);return `
-          <tr>
-            <td><span class="linklike" onclick="go('project',${p.id})">${esc(p.title)}</span></td>
-            <td>${p.projectLead?esc(p.projectLead.title):'<span style="color:var(--muted)">Unassigned</span>'}</td>
-            <td>${statusBadge(p.statusKey, projStatusLabel(p.statusKey))}</td>
-            <td>${fmtDate(p.startDate)}</td><td>${fmtDate(p.endDate)}</td>
-            <td style="color:var(--muted)">${pr.pct}%</td>
-          </tr>`;}).join(''):`<tr><td colspan="6"><div class="empty">No projects match.</div></td></tr>`}</tbody>
-      </table>
-    </div>`;
+    ${projView==='cards' ? projectCardsHtml(list) : projectListHtml(list)}`;
+}
+function projectCardsHtml(list) {
+  if (!list.length) return `<div class="card"><div class="empty">No projects match.</div></div>`;
+  return `<div class="cardgrid">${list.map(p=>{
+    const src = coverSrc(p);
+    return `<div class="pcard" onclick="go('project',${p.id})">
+      <div class="pcover">${src?`<img src="${src}" alt=""/>`:'No cover image'}</div>
+      <div class="pbody">
+        <div class="t">${esc(p.title)}</div>
+        <div class="m"><span>${p.projectLead?esc(p.projectLead.title):'Unassigned'}</span>${statusBadge(p.statusKey, projStatusLabel(p.statusKey))}</div>
+        <div class="m" style="margin-top:6px"><span>${taskCount(p.id)}</span><span>${fmtDate(p.endDate)}</span></div>
+      </div>
+    </div>`;}).join('')}</div>`;
+}
+function projectListHtml(list) {
+  return `<div class="card">
+    <table>
+      <thead><tr><th>Project</th><th>Lead</th><th>Status</th><th>Start</th><th>End</th><th>Tasks</th></tr></thead>
+      <tbody>${list.length?list.map(p=>{const pr=W.projectProgress(DATA,p.id);return `
+        <tr>
+          <td><span class="linklike" onclick="go('project',${p.id})">${esc(p.title)}</span></td>
+          <td>${p.projectLead?esc(p.projectLead.title):'<span style="color:var(--muted)">Unassigned</span>'}</td>
+          <td>${statusBadge(p.statusKey, projStatusLabel(p.statusKey))}</td>
+          <td>${fmtDate(p.startDate)}</td><td>${fmtDate(p.endDate)}</td>
+          <td style="color:var(--muted)">${pr.done}/${pr.total} done</td>
+        </tr>`;}).join(''):`<tr><td colspan="6"><div class="empty">No projects match.</div></td></tr>`}</tbody>
+    </table>
+  </div>`;
 }
 
-// ---- Project detail ---------------------------------------------------------
+// ---- Project detail -----------------------------------------------------------
 function pageProjectDetail(id) {
   const role = CURRENT_USER.roleKey;
   const p = projectById(Number(id));
   if (!p) return `<p>Project not found. <span class="linklike" onclick="go('projects')">Back</span></p>`;
   const tasks = DATA.tasks.filter(t=>t.associatedProject && t.associatedProject.id===p.id);
   const pr = W.projectProgress(DATA, p.id);
+  const members = W.membersOfProject(DATA, p.id);
+  const info = safeUrl(p.infoUrl);
   const cols = [['StatusKey0','Not Started'],['StatusKey1','In Progress'],['StatusKey2','Completed']];
   return `
     <span class="backlink" onclick="go('projects')">&larr; Projects</span>
     <div class="page-head">
       <div>
         <h2>${esc(p.title)}</h2>
-        <p class="metaline">Lead: ${p.projectLead?esc(p.projectLead.title):'Unassigned'} &middot; ${fmtDate(p.startDate)} → ${fmtDate(p.endDate)} &middot; ${projStatusLabel(p.statusKey)}</p>
+        <p class="metaline">Lead: ${p.projectLead?esc(p.projectLead.title):'Unassigned'} &middot; ${fmtDate(p.startDate)} → ${fmtDate(p.endDate)} &middot; ${projStatusLabel(p.statusKey)}
+        ${info?` &middot; <a href="${info}" target="_blank" rel="noopener">Project info ↗</a>`:''}</p>
       </div>
       <div style="display:flex;gap:8px">
         ${W.canCreateTask(role)?`<button class="btn" onclick="go('task-form','new:${p.id}')">+ Task</button>`:''}
@@ -418,8 +513,19 @@ function pageProjectDetail(id) {
     <div class="kpis">
       <div class="kpi"><div class="n">${pr.total}</div><div class="l">Tasks</div></div>
       <div class="kpi"><div class="n">${pr.done}</div><div class="l">Completed</div></div>
-      <div class="kpi"><div class="n">${pr.pct}%</div><div class="l">Progress</div></div>
+      <div class="kpi"><div class="n">${pr.total-pr.done}</div><div class="l">Open</div></div>
       <div class="kpi warn"><div class="n">${tasks.filter(W.isTaskOverdue).length}</div><div class="l">Overdue</div></div>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${members.length?'12px':'0'}">
+        <h3 style="margin:0">Members (${members.length})</h3>
+        ${W.canEditProject(role)?`<button class="btn ghost sm" onclick="openMembersModal(${p.id})">+ Add members</button>`:''}
+      </div>
+      ${members.length?`<div class="memberchips">${members.map(m=>`
+        <span class="memberchip">${esc(m.title)} <span style="color:var(--muted)">· ${esc(roleLabel(m.roleKey))}</span>
+          ${W.canEditProject(role)?`<button title="Remove from project" onclick="removeMember(${m.id})">&times;</button>`:''}
+        </span>`).join('')}</div>`
+        :''}
     </div>
     <div class="kanban">
       ${cols.map(([k,label])=>`
@@ -427,7 +533,8 @@ function pageProjectDetail(id) {
           <h4>${label} (${tasks.filter(t=>t.statusKey===k).length})</h4>
           ${tasks.filter(t=>t.statusKey===k).map(t=>taskCardHtml(t)).join('') || '<div class="empty" style="padding:10px">—</div>'}
         </div>`).join('')}
-    </div>`;
+    </div>
+    ${modal && modal.type==='members' ? membersModalHtml() : ''}`;
 }
 function taskCardHtml(t) {
   return `<div class="taskcard" onclick="go('task',${t.id})">
@@ -436,7 +543,53 @@ function taskCardHtml(t) {
   </div>`;
 }
 
-// ---- Task detail ------------------------------------------------------------
+// ---- Members batch-add ----------------------------------------------------------
+function openMembersModal(projectId){ modal = { type:'members', projectId, checked:{} }; render(); }
+function membersModalHtml() {
+  const p = projectById(modal.projectId);
+  const candidates = DATA.users.filter(u => !(u.projectMembership && u.projectMembership.id === p.id));
+  return `
+    <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3>Add members to ${esc(p.title)}</h3>
+        <div class="note">Each person holds one project-membership slot, regardless of role (an admin's or executive's oversight is separate from their membership slot). Selecting someone already on another project will move them.</div>
+        <div style="max-height:300px;overflow-y:auto;margin-top:8px">
+          ${candidates.length?candidates.map(u=>`
+            <label class="checkrow" style="cursor:pointer;margin:0">
+              <input type="checkbox" ${modal.checked[u.id]?'checked':''} onchange="modal.checked[${u.id}]=this.checked">
+              <span>${esc(u.title)} <span class="sub">· ${esc(roleLabel(u.roleKey))}${u.projectMembership?` · currently on ${esc(u.projectMembership.title)}`:''}</span></span>
+            </label>`).join(''):'<div class="empty">Everyone is already on this project.</div>'}
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn" onclick="saveMembers()">Add selected</button>
+        </div>
+      </div>
+    </div>`;
+}
+function saveMembers() {
+  const p = projectById(modal.projectId);
+  const ids = Object.keys(modal.checked).filter(k=>modal.checked[k]).map(Number);
+  if (!ids.length) { closeModal(); return; }
+  let selected = ids.map(userById).filter(Boolean);
+  const conflicts = selected.filter(u => u.projectMembership && u.projectMembership.id !== p.id);
+  if (conflicts.length) {
+    const msg = conflicts.map(u=>`• ${u.title} (currently on ${u.projectMembership.title})`).join('\n');
+    if (!confirm(`Each person can only be on one project. Move the following to "${p.title}"?\n\n${msg}`)) {
+      selected = selected.filter(u => !conflicts.includes(u)); // keep only conflict-free additions
+    }
+  }
+  selected.forEach(u => { u.projectMembership = { id:p.id, title:p.title }; });
+  persist(); closeModal();
+}
+function removeMember(userId) {
+  const u = userById(userId);
+  if (!u) return;
+  if (!confirm(`Remove ${u.title} from this project? Their membership resets to none.`)) return;
+  u.projectMembership = null; persist(); render();
+}
+
+// ---- Task detail ---------------------------------------------------------------
 function pageTaskDetail(id) {
   const role = CURRENT_USER.roleKey;
   const t = taskById(Number(id));
@@ -465,14 +618,16 @@ function pageTaskDetail(id) {
     </div>`;
 }
 
-// ---- My Tasks ---------------------------------------------------------------
-let myFilter = { status:'', priority:'' };
+// ---- My Tasks (with due-date sorting) --------------------------------------------
+let myFilter = { status:'', priority:'', sortDir:'asc' };
 function pageMyTasks() {
   const me = W.resolveDirectoryUser(DATA.users, CURRENT_USER) || CURRENT_USER;
   let list = W.tasksForUser(DATA.tasks, me);
   if (myFilter.status) list = list.filter(t=>t.statusKey===myFilter.status);
   if (myFilter.priority) list = list.filter(t=>t.priorityKey===myFilter.priority);
-  list = list.sort((a,b)=> (W.parseDateOnly(a.dueDate)||Infinity) - (W.parseDateOnly(b.dueDate)||Infinity));
+  const dir = myFilter.sortDir === 'asc' ? 1 : -1;
+  list = list.sort((a,b)=> dir * (((W.parseDateOnly(a.dueDate)||new Date(9999,0)) - (W.parseDateOnly(b.dueDate)||new Date(9999,0)))));
+  const arrow = myFilter.sortDir==='asc' ? '▲' : '▼';
   return `
     <div class="page-head"><div><h2>My Tasks</h2><p>Tasks assigned to ${esc(me.title)}.</p></div></div>
     <div class="toolbar">
@@ -487,7 +642,8 @@ function pageMyTasks() {
     </div>
     <div class="card">
       <table>
-        <thead><tr><th>Task</th><th>Project</th><th>Priority</th><th>Status</th><th>Due</th></tr></thead>
+        <thead><tr><th>Task</th><th>Project</th><th>Priority</th><th>Status</th>
+          <th class="sortable" onclick="myFilter.sortDir=myFilter.sortDir==='asc'?'desc':'asc';render()">Due ${arrow}</th></tr></thead>
         <tbody>${list.length?list.map(t=>`
           <tr>
             <td><span class="linklike" onclick="go('task',${t.id})">${esc(t.title)}</span>${W.isTaskOverdue(t)?'<span class="overdue">Overdue</span>':''}</td>
@@ -500,7 +656,7 @@ function pageMyTasks() {
     </div>`;
 }
 
-// ---- Member contributions (admin/exec) --------------------------------------
+// ---- Member contributions ---------------------------------------------------------
 function pageContributions() {
   const members = DATA.users.filter(u=>W.isMember(u.roleKey));
   const rows = members.map(m=>{
@@ -520,7 +676,7 @@ function pageContributions() {
     </div>`;
 }
 
-// ---- Users admin ------------------------------------------------------------
+// ---- Users admin --------------------------------------------------------------------
 let userSearch = '', userRoleFilter = '';
 function pageUsers() {
   let list = DATA.users;
@@ -529,13 +685,10 @@ function pageUsers() {
   return `
     <div class="page-head">
       <div><h2>Users</h2><p>Manage directory users, roles, and project membership. Promote members to higher roles here.</p></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn ghost" onclick="resetData()">Reset demo data</button>
-        <button class="btn" onclick="openUserModal(null)">+ New user</button>
-      </div>
+      <button class="btn" onclick="openUserModal(null)">+ New user</button>
     </div>
     <div class="toolbar">
-      <input placeholder="Search name or email" value="${esc(userSearch)}" oninput="userSearch=this.value;render()" style="min-width:220px"/>
+      <input id="userSearchInput" placeholder="Search name or email" value="${esc(userSearch)}" oninput="userSearch=this.value;render()" style="min-width:220px"/>
       <select onchange="userRoleFilter=this.value;render()">
         <option value="">All roles</option>
         ${Object.entries(enums().userRole).map(([k,v])=>`<option value="${k}" ${userRoleFilter===k?'selected':''}>${v}</option>`).join('')}
@@ -546,7 +699,7 @@ function pageUsers() {
         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Membership</th><th></th></tr></thead>
         <tbody>${list.map(u=>`
           <tr>
-            <td>${esc(u.title)}</td>
+            <td>${esc(u.title)}${u.googleAccount?' <span class="sub" style="color:var(--muted);font-size:11px">(Google)</span>':''}</td>
             <td style="color:var(--muted)">${esc(u.email||'—')}</td>
             <td><span class="rolechip">${esc(roleLabel(u.roleKey))}</span></td>
             <td style="color:var(--muted)">${u.projectMembership?esc(u.projectMembership.title):'—'}</td>
@@ -560,12 +713,60 @@ function pageUsers() {
     ${modal && modal.type==='user' ? userModalHtml() : ''}`;
 }
 
-// ---- Project form -----------------------------------------------------------
+// ---- Settings (admin) -----------------------------------------------------------------
+function pageSettings() {
+  const theme = Object.assign({}, DATA.meta.theme || {}, SETTINGS.theme || {});
+  const colorKeys = [['primary','Primary'],['accent','Accent'],['background','Background'],['surface','Surface'],['surface2','Surface 2'],['border','Border'],['foreground','Text'],['muted','Muted text']];
+  return `
+    <div class="page-head"><div><h2>Settings</h2><p>Site branding, theme, and integrations. Changes save to this browser.</p></div></div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h3>Logo & favicon</h3>
+      <div class="setrow">
+        ${SETTINGS.logoDataUrl?`<img class="logoprev" src="${SETTINGS.logoDataUrl}"/>`:`<div class="logoprev" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">none</div>`}
+        <input type="file" accept="image/*" onchange="uploadLogo(this.files[0])"/>
+        ${SETTINGS.logoDataUrl?`<button class="btn ghost sm" onclick="SETTINGS.logoDataUrl=null;persistSettings();applyBranding();render()">Remove</button>`:''}
+      </div>
+      <div class="note">The uploaded image replaces the site logo (upper left) and the browser-tab favicon on this browser.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h3>Theme colours</h3>
+      ${colorKeys.map(([k,label])=>`
+        <div class="setrow">
+          <span class="lbl">${label}</span>
+          <input type="color" value="${esc(theme[k]||'#000000')}" onchange="setThemeColor('${k}', this.value)"/>
+          <span style="color:var(--muted);font-size:12px">${esc(theme[k]||'')}</span>
+        </div>`).join('')}
+      <div class="setrow" style="margin-top:14px">
+        <button class="btn ghost sm" onclick="SETTINGS.theme={};persistSettings();applyBranding();render()">Reset to default theme</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h3>GitHub image uploads</h3>
+      <div class="note">Optional. With a fine-grained GitHub token (Contents: Read &amp; write on this repo only), project cover images are committed to the <code>cover-images/</code> folder in the repository so they're shared via the site. Without a token, covers are stored in this browser only. <strong>Warning:</strong> the token is kept in this browser's local storage — use a minimal-scope token and revoke it if in doubt.</div>
+      <div class="setrow"><span class="lbl">Repository</span><input id="s_repo" value="${esc(SETTINGS.repo)}" style="min-width:280px"/></div>
+      <div class="setrow"><span class="lbl">Token</span><input id="s_token" type="password" value="${esc(SETTINGS.githubToken)}" style="min-width:280px" placeholder="github_pat_…"/></div>
+      <div class="setrow"><button class="btn sm" onclick="SETTINGS.repo=val('s_repo').trim();SETTINGS.githubToken=val('s_token').trim();persistSettings();alert('Saved.')">Save</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Data</h3>
+      <div class="setrow"><button class="btn danger sm" onclick="resetData()">Reset demo data</button>
+      <span style="color:var(--muted);font-size:12px">Clears all local changes and re-seeds from data/data.json.</span></div>
+    </div>`;
+}
+function setThemeColor(key, value){ SETTINGS.theme[key]=value; persistSettings(); applyBranding(); render(); }
+function uploadLogo(file){ if(!file) return; readFileAsDataUrl(file, url => { SETTINGS.logoDataUrl=url; persistSettings(); applyBranding(); render(); }); }
+
+// ---- Project form -----------------------------------------------------------------
 function pageProjectForm(param) {
   const isNew = param==='new';
-  const p = isNew ? { title:'', statusKey:'StatusKey0', startDate:'', endDate:'', projectLead:null } : projectById(Number(param));
+  const p = isNew ? { title:'', statusKey:'StatusKey0', startDate:'', endDate:'', projectLead:null, infoUrl:'', coverImage:null } : projectById(Number(param));
   if (!p) return `<p>Not found.</p>`;
   const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey));
+  const preview = COVER_PENDING ? COVER_PENDING.dataUrl : coverSrc(p);
   return `
     <span class="backlink" onclick="go('${isNew?'projects':'project'}'${isNew?'':','+p.id})">&larr; Back</span>
     <div class="page-head"><div><h2>${isNew?'New project':'Edit project'}</h2></div></div>
@@ -585,37 +786,99 @@ function pageProjectForm(param) {
           ${leads.map(u=>`<option value="${u.id}" ${p.projectLead&&p.projectLead.id===u.id?'selected':''}>${esc(u.title)}</option>`).join('')}
         </select></div>
       </div>
+      <label>Info URL <span style="text-transform:none;letter-spacing:0">(e.g. a Google Drive folder — must start with http/https)</span></label>
+      <input id="f_infourl" value="${esc(p.infoUrl||'')}" style="width:100%" placeholder="https://…"/>
+      <label>Cover image</label>
+      <input type="file" accept="image/*" onchange="stageCover(this.files[0])"/>
+      ${preview?`<img class="coverprev" src="${preview}"/><div style="margin-top:6px"><button class="btn ghost sm" onclick="clearCover(${isNew?'null':p.id})">Remove cover</button></div>`:''}
+      ${SETTINGS.githubToken?'':'<div class="note">No GitHub token set (Settings), so the cover is stored in this browser only — not committed to the repository.</div>'}
       <div class="modal-actions">
         <button class="btn ghost" onclick="go('${isNew?'projects':'project'}'${isNew?'':','+p.id})">Cancel</button>
         <button class="btn" onclick="saveProject(${isNew?'null':p.id})">Save</button>
       </div>
     </div>`;
 }
-function saveProject(id) {
+function stageCover(file){ if(!file) return; readFileAsDataUrl(file, url => { COVER_PENDING = { dataUrl:url, name:file.name }; render(); }); }
+function clearCover(id){ COVER_PENDING = null; if(id!=null){ const p=projectById(id); if(p) p.coverImage=null; persist(); } render(); }
+
+async function uploadCoverToRepo(filename, dataUrl) {
+  const token = SETTINGS.githubToken, repo = SETTINGS.repo;
+  if (!token || !repo) return null;
+  const base64 = dataUrl.split(',')[1];
+  const safe = filename.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path = 'cover-images/' + Date.now() + '-' + safe;
+  const headers = { 'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json' };
+  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+    method:'PUT', headers,
+    body: JSON.stringify({ message:'Upload cover image '+safe, content: base64 })
+  });
+  if (!res.ok) throw new Error('GitHub upload failed ('+res.status+')');
+  const j = await res.json();
+  return j.content.download_url;
+}
+
+async function saveProject(id) {
   const leadId = val('f_lead');
   const rec = {
     title: val('f_title'),
     startDate: val('f_start'),
     endDate: val('f_end') || null,
     statusKey: val('f_status'),
+    infoUrl: val('f_infourl').trim() || null,
     projectLead: leadId ? { id:Number(leadId), title:userById(Number(leadId)).title } : null,
   };
   const errs = W.validateProject(rec);
+  if (rec.infoUrl && !safeUrl(rec.infoUrl)) errs.push('Info URL must start with http:// or https://.');
   if (errs.length) { document.getElementById('formErrs').innerHTML = `<div class="errs">${errs.map(esc).join('<br>')}</div>`; return; }
+
+  // Leads can only lead one project: confirm reassignment.
+  if (rec.projectLead) {
+    const others = DATA.projects.filter(p => p.projectLead && p.projectLead.id===rec.projectLead.id && p.id!==(id==null?-1:id));
+    if (others.length) {
+      const names = others.map(o=>`"${o.title}"`).join(', ');
+      if (!confirm(`${rec.projectLead.title} already leads ${names}. Leads can only lead one project — unassign them there and assign here?`)) {
+        return; // abort save so a different lead can be chosen
+      }
+      others.forEach(o => { o.projectLead = null; });
+    }
+  }
+
+  // Cover image handling.
+  if (COVER_PENDING) {
+    if (SETTINGS.githubToken) {
+      try {
+        const url = await uploadCoverToRepo(COVER_PENDING.name, COVER_PENDING.dataUrl);
+        rec.coverImage = { url };
+      } catch (e) {
+        alert('Uploading the cover to the repository failed ('+e.message+'). Storing it in this browser instead.');
+        rec.coverImage = { dataUrl: COVER_PENDING.dataUrl };
+      }
+    } else {
+      rec.coverImage = { dataUrl: COVER_PENDING.dataUrl };
+    }
+  } else if (id!=null) {
+    rec.coverImage = projectById(id).coverImage || null;
+  }
+
   let newId = id;
   if (id==null) { rec.id = ++DATA.sequences.project; DATA.projects.push(rec); newId = rec.id; }
   else { Object.assign(projectById(id), rec); }
+  COVER_PENDING = null;
   reconcileReferences(); persist();
   go('project', newId);
 }
 function deleteProject(id) {
-  if (!confirm('Delete this project and unlink its tasks?')) return;
-  DATA.projects = DATA.projects.filter(p=>p.id!==id);
-  DATA.tasks = DATA.tasks.filter(t=>t.associatedProject.id!==id);
+  const p = projectById(id);
+  if (!p) return;
+  const members = W.membersOfProject(DATA, id);
+  if (!confirm(`Delete "${p.title}"?\n\nThis also deletes all its tasks and resets the project membership of ${members.length} user(s) to none.`)) return;
+  DATA.projects = DATA.projects.filter(x=>x.id!==id);
+  DATA.tasks = DATA.tasks.filter(t=>!(t.associatedProject && t.associatedProject.id===id));   // cascade tasks
+  DATA.users.forEach(u=>{ if (u.projectMembership && u.projectMembership.id===id) u.projectMembership = null; }); // reset memberships
   persist(); go('projects');
 }
 
-// ---- Task form --------------------------------------------------------------
+// ---- Task form ---------------------------------------------------------------------
 function pageTaskForm(param) {
   const role = CURRENT_USER.roleKey;
   const isNew = String(param).startsWith('new');
@@ -696,7 +959,7 @@ function deleteTask(id) {
   persist(); go('project', pid);
 }
 
-// ---- User modal -------------------------------------------------------------
+// ---- User modal -------------------------------------------------------------------
 function openUserModal(id){ modal = { type:'user', id }; render(); }
 function closeModal(){ modal = null; render(); }
 function userModalHtml() {
@@ -718,7 +981,7 @@ function userModalHtml() {
             ${DATA.projects.map(p=>`<option value="${p.id}" ${u.projectMembership&&u.projectMembership.id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}
           </select></div>
         </div>
-        <label>Password ${isNew?'':'<span style="text-transform:none;letter-spacing:0">(leave blank to keep unchanged)</span>'}</label>
+        <label>Password ${isNew?'':'<span style="text-transform:none;letter-spacing:0">(leave blank to keep unchanged; not needed for Google accounts)</span>'}</label>
         <input id="u_pw" type="password" style="width:100%" autocomplete="new-password"/>
         <div class="modal-actions">
           <button class="btn ghost" onclick="closeModal()">Cancel</button>
@@ -760,6 +1023,7 @@ function reconcileReferences() {
     if (t.assignedTo){ const u=userById(t.assignedTo.id); if(u) t.assignedTo.title=u.title; }
   });
   DATA.projects.forEach(p=>{ if(p.projectLead){ const u=userById(p.projectLead.id); if(u) p.projectLead.title=u.title; } });
+  DATA.users.forEach(u=>{ if(u.projectMembership){ const p=projectById(u.projectMembership.id); if(p) u.projectMembership.title=p.title; } });
 }
 
 boot();

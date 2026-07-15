@@ -159,6 +159,34 @@
       .slice(0, limit);
   }
 
+  // Role-scoped upcoming tasks:
+  //   Members       -> only tasks assigned to them
+  //   Project Leads -> tasks within projects they lead
+  //   Admins/Execs  -> tasks across all projects
+  function upcomingTasksForUser(data, user, limit = 5) {
+    const role = user.roleKey;
+    let ts = data.tasks.filter((t) => t.statusKey !== 'StatusKey2' && t.dueDate);
+    if (isMember(role)) {
+      ts = ts.filter((t) => t.assignedTo && t.assignedTo.id === user.id);
+    } else if (isProjectLead(role)) {
+      const led = data.projects.filter((p) => p.projectLead && p.projectLead.id === user.id).map((p) => p.id);
+      ts = ts.filter((t) => t.associatedProject && led.includes(t.associatedProject.id));
+    }
+    return ts.sort((a, b) => parseDateOnly(a.dueDate) - parseDateOnly(b.dueDate)).slice(0, limit);
+  }
+
+  // The single project a user currently leads (leads may only lead one).
+  function projectLedBy(data, userId, excludeProjectId = null) {
+    return data.projects.find(
+      (p) => p.projectLead && p.projectLead.id === userId && p.id !== excludeProjectId
+    );
+  }
+
+  // Users whose single membership slot points at this project.
+  function membersOfProject(data, projectId) {
+    return data.users.filter((u) => u.projectMembership && u.projectMembership.id === projectId);
+  }
+
   function projectProgress(data, projectId) {
     const items = data.tasks.filter((t) => t.associatedProject && t.associatedProject.id === projectId);
     if (!items.length) return { done: 0, total: 0, pct: 0 };
@@ -196,7 +224,8 @@
     canEditTask, canManageUsers, canBeProjectLead,
     resolveDirectoryUser, tasksForUser,
     parseDateOnly, isTaskOverdue, priorityColor, statusColor,
-    dashboardKpis, projectLeadCoverage, upcomingTasks, projectProgress,
+    dashboardKpis, projectLeadCoverage, upcomingTasks, upcomingTasksForUser,
+    projectLedBy, membersOfProject, projectProgress,
     validateProject, validateTask,
   };
 })();
