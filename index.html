@@ -141,7 +141,7 @@ let COVER_PENDING = null; // { dataUrl, name } staged on the project form
 // ---- Boot / persistence -----------------------------------------------------
 async function boot() {
   let seed;
-  try { seed = await (await fetch('data/data.json', { cache:'no-store' })).json(); }
+  try { seed = await (await fetch('data/data.json?ts=' + Date.now(), { cache:'no-store' })).json(); }
   catch (e) {
     document.getElementById('app').innerHTML =
       '<main><h2>Could not load data</h2><p>Ensure data/data.json is present and the page is served over http/https.</p></main>';
@@ -164,7 +164,37 @@ async function boot() {
 }
 function loadJson(k){ try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
 function saveJson(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
-function persist(){ saveJson(STORE_KEY, { users:DATA.users, projects:DATA.projects, tasks:DATA.tasks, sequences:DATA.sequences }); }
+function persist(){ saveJson(STORE_KEY, { users:DATA.users, projects:DATA.projects, tasks:DATA.tasks, sequences:DATA.sequences }); scheduleRepoSync(); }
+
+// ---- Repo write-back: with a GitHub token, every change is committed to data/data.json ----
+let syncTimer = null, lastSync = '';
+function scheduleRepoSync() {
+  if (!SETTINGS.githubToken || !SETTINGS.repo) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncToRepo, 1500); // debounce rapid edits into one commit
+}
+async function syncToRepo() {
+  try {
+    const content = JSON.stringify({
+      meta: DATA.meta, auth: DATA.auth, enums: DATA.enums,
+      users: DATA.users, projects: DATA.projects, tasks: DATA.tasks, sequences: DATA.sequences
+    }, null, 2);
+    const b64 = btoa(unescape(encodeURIComponent(content)));
+    const headers = { 'Authorization':'Bearer '+SETTINGS.githubToken, 'Accept':'application/vnd.github+json' };
+    let sha;
+    const g = await fetch(`https://api.github.com/repos/${SETTINGS.repo}/contents/data/data.json`, { headers });
+    if (g.ok) sha = (await g.json()).sha;
+    const res = await fetch(`https://api.github.com/repos/${SETTINGS.repo}/contents/data/data.json`, {
+      method:'PUT', headers,
+      body: JSON.stringify({ message:'Update data from app', content:b64, ...(sha?{sha}:{}) })
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    lastSync = 'Synced ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    console.warn('Repo sync failed:', e.message);
+    lastSync = 'Sync failed: ' + e.message;
+  }
+}
 function persistSettings(){ saveJson(SETTINGS_KEY, SETTINGS); }
 function setSession(id){ saveJson(SESSION_KEY, { userId:id }); CURRENT_USER = userById(id); }
 function clearSession(){ try { localStorage.removeItem(SESSION_KEY); } catch(e){} CURRENT_USER = null; }
@@ -183,13 +213,6 @@ function applyBranding() {
   if (SETTINGS.logoDataUrl) document.getElementById('faviconLink').href = SETTINGS.logoDataUrl;
 }
 
-// ---- Hashing ------------------------------------------------------------------
-async function hashText(t) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-const hashPassword = (pw) => hashText((DATA.auth.passwordSalt || '') + ':' + pw);
-
 // ---- Helpers ------------------------------------------------------------------
 const enums = () => DATA.enums;
 function brandInitials() {
@@ -207,6 +230,7 @@ const projStatusLabel = (k) => enums().projectStatus[k] || '—';
 const taskStatusLabel = (k) => enums().taskStatus[k] || '—';
 const taskPriorityLabel = (k) => enums().taskPriority[k] || '—';
 const fmtDate = (d) => d ? new Date(d+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
+const byName = (a,b) => String(a.title||'').localeCompare(String(b.title||''));
 const userById = (id) => DATA.users.find(u => u.id === id);
 const projectById = (id) => DATA.projects.find(p => p.id === id);
 const taskById = (id) => DATA.tasks.find(t => t.id === id);
@@ -302,22 +326,10 @@ function renderAuth() {
         ${authErr?`<div class="errs">${esc(authErr)}</div>`:''}
         ${gEnabled
           ? `<div id="gsiBtn"></div>
-             <div class="note">Sign in with your <strong>@${esc(DATA.auth.allowedDomain)}</strong> Google account. New sign-ins are registered as Members; an admin can promote you afterwards.</div>`
-          : `<div class="note">Google sign-in isn't configured yet (no client ID in <code>data/data.json</code>). Use a password login below.</div>`}
-        <div class="divider">Password login</div>
-        <label>Email</label><input id="l_email" type="email" style="width:100%" autocomplete="username"/>
-        <label>Password</label><input id="l_pw" type="password" style="width:100%" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
-        <button class="btn block" style="margin-top:16px" onclick="doLogin()">Log in</button>
+             <div class="note">Sign in with your <strong>@${esc(DATA.auth.allowedDomain)}</strong> Google account — this is the only way to sign in or register. New sign-ins are registered as Members; an admin can promote you afterwards.</div>`
+          : `<div class="errs">Google sign-in isn't configured (no client ID in <code>data/data.json</code>), so signing in is currently unavailable.</div>`}
       </div>
     </div>`;
-}
-async function doLogin() {
-  const email = val('l_email'), pw = val('l_pw');
-  const u = DATA.users.find(x => norm(x.email) === norm(email));
-  if (!u || !u.passwordHash) { authErr = 'No password account found for that email.'; return render(); }
-  const h = await hashPassword(pw);
-  if (h !== u.passwordHash) { authErr = 'Incorrect password.'; return render(); }
-  setSession(u.id); authErr = ''; go('dashboard');
 }
 function doLogout() { clearSession(); route = { name:'dashboard', param:null }; render(); }
 
@@ -451,7 +463,7 @@ function pageProjects() {
   let list = DATA.projects;
   if (projFilter.status) list = list.filter(p=>p.statusKey===projFilter.status);
   if (projFilter.lead) list = list.filter(p=>p.projectLead && String(p.projectLead.id)===projFilter.lead);
-  const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey));
+  const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey)).sort(byName);
   return `
     <div class="page-head">
       <div><h2>Projects</h2><p>All delivery projects with status and lead.</p></div>
@@ -511,7 +523,7 @@ function pageProjectDetail(id) {
   if (!p) return `<p>Project not found. <span class="linklike" onclick="go('projects')">Back</span></p>`;
   const tasks = DATA.tasks.filter(t=>t.associatedProject && t.associatedProject.id===p.id);
   const pr = W.projectProgress(DATA, p.id);
-  const members = W.membersOfProject(DATA, p.id);
+  const members = W.membersOfProject(DATA, p.id).sort(byName);
   const info = safeUrl(p.infoUrl);
   const cols = [['StatusKey0','Not Started'],['StatusKey1','In Progress'],['StatusKey2','Completed']];
   return `
@@ -565,7 +577,7 @@ function taskCardHtml(t) {
 function openMembersModal(projectId){ modal = { type:'members', projectId, checked:{} }; render(); }
 function membersModalHtml() {
   const p = projectById(modal.projectId);
-  const candidates = DATA.users.filter(u => !(u.projectMembership && u.projectMembership.id === p.id));
+  const candidates = DATA.users.filter(u => !(u.projectMembership && u.projectMembership.id === p.id)).sort(byName);
   return `
     <div class="modal-bg" onclick="if(event.target===this)closeModal()">
       <div class="modal">
@@ -676,7 +688,7 @@ function pageMyTasks() {
 
 // ---- Member contributions ---------------------------------------------------------
 function pageContributions() {
-  const members = DATA.users.filter(u=>W.isMember(u.roleKey));
+  const members = DATA.users.filter(u=>W.isMember(u.roleKey)).sort(byName);
   const rows = members.map(m=>{
     const ts = W.tasksForUser(DATA.tasks, m);
     return { name:m.title, total:ts.length, done:ts.filter(t=>t.statusKey==='StatusKey2').length, overdue:ts.filter(W.isTaskOverdue).length };
@@ -697,7 +709,7 @@ function pageContributions() {
 // ---- Users admin --------------------------------------------------------------------
 let userSearch = '', userRoleFilter = '';
 function pageUsers() {
-  let list = DATA.users;
+  let list = [...DATA.users].sort(byName);
   if (userRoleFilter) list = list.filter(u=>u.roleKey===userRoleFilter);
   if (userSearch) { const q=userSearch.toLowerCase(); list=list.filter(u=>u.title.toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)); }
   return `
@@ -762,17 +774,18 @@ function pageSettings() {
     </div>
 
     <div class="card" style="margin-bottom:18px">
-      <h3>GitHub image uploads</h3>
-      <div class="note">Optional. With a fine-grained GitHub token (Contents: Read &amp; write on this repo only), project cover images are committed to the <code>cover-images/</code> folder in the repository so they're shared via the site. Without a token, covers are stored in this browser only. <strong>Warning:</strong> the token is kept in this browser's local storage — use a minimal-scope token and revoke it if in doubt.</div>
+      <h3>GitHub sync</h3>
+      <div class="note">Optional. With a fine-grained GitHub token (Contents: Read &amp; write on this repo only), every change — projects, tasks, users — is automatically committed to <code>data/data.json</code> in the repository (shared with everyone via the site), and cover images are committed to <code>cover-images/</code>. Without a token, changes stay in this browser only. <strong>Warning:</strong> the token is kept in this browser's local storage — use a minimal-scope token and revoke it if in doubt.</div>
       <div class="setrow"><span class="lbl">Repository</span><input id="s_repo" value="${esc(SETTINGS.repo)}" style="min-width:280px"/></div>
       <div class="setrow"><span class="lbl">Token</span><input id="s_token" type="password" value="${esc(SETTINGS.githubToken)}" style="min-width:280px" placeholder="github_pat_…"/></div>
-      <div class="setrow"><button class="btn sm" onclick="SETTINGS.repo=val('s_repo').trim();SETTINGS.githubToken=val('s_token').trim();persistSettings();alert('Saved.')">Save</button></div>
+      <div class="setrow"><button class="btn sm" onclick="SETTINGS.repo=val('s_repo').trim();SETTINGS.githubToken=val('s_token').trim();persistSettings();persist();alert('Saved. Data will sync to the repository.')">Save</button></div>
+      ${lastSync?`<div class="metaline" style="margin-top:8px">${esc(lastSync)}</div>`:''}
     </div>
 
     <div class="card">
       <h3>Data</h3>
-      <div class="setrow"><button class="btn danger sm" onclick="resetData()">Reset demo data</button>
-      <span style="color:var(--muted);font-size:12px">Clears all local changes and re-seeds from data/data.json.</span></div>
+      <div class="setrow"><button class="btn danger sm" onclick="resetData()">Reset local data (reload from repository)</button>
+      <span style="color:var(--muted);font-size:12px">Clears this browser's local changes and reloads the current data/data.json from the repository.</span></div>
     </div>`;
 }
 function setThemeColor(key, value){ SETTINGS.theme[key]=value; persistSettings(); applyBranding(); render(); }
@@ -783,7 +796,7 @@ function pageProjectForm(param) {
   const isNew = param==='new';
   const p = isNew ? { title:'', statusKey:'StatusKey0', startDate:'', endDate:'', projectLead:null, infoUrl:'', coverImage:null } : projectById(Number(param));
   if (!p) return `<p>Not found.</p>`;
-  const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey));
+  const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey)).sort(byName);
   const preview = COVER_PENDING ? COVER_PENDING.dataUrl : coverSrc(p);
   return `
     <span class="backlink" onclick="go('${isNew?'projects':'project'}'${isNew?'':','+p.id})">&larr; Back</span>
@@ -792,8 +805,8 @@ function pageProjectForm(param) {
       <div id="formErrs"></div>
       <label>Title</label><input id="f_title" value="${esc(p.title)}" style="width:100%"/>
       <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div><label>Start date</label><input id="f_start" type="date" value="${esc(p.startDate)}" style="width:100%"/></div>
-        <div><label>End date</label><input id="f_end" type="date" value="${esc(p.endDate||'')}" style="width:100%"/></div>
+        <div><label>Start date</label><input id="f_start" type="date" onclick="this.showPicker&&this.showPicker()" value="${esc(p.startDate)}" style="width:100%"/></div>
+        <div><label>End date</label><input id="f_end" type="date" onclick="this.showPicker&&this.showPicker()" value="${esc(p.endDate||'')}" style="width:100%"/></div>
       </div>
       <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div><label>Status</label><select id="f_status" style="width:100%">
@@ -922,7 +935,7 @@ function pageTaskForm(param) {
         </select></div>
         <div><label>Assigned to</label><select id="f_assignee" style="width:100%" ${memberOnly?'disabled':''}>
           <option value="">Unassigned</option>
-          ${DATA.users.map(u=>`<option value="${u.id}" ${t.assignedTo&&t.assignedTo.id===u.id?'selected':''}>${esc(u.title)}</option>`).join('')}
+          ${[...DATA.users].sort(byName).map(u=>`<option value="${u.id}" ${t.assignedTo&&t.assignedTo.id===u.id?'selected':''}>${esc(u.title)}</option>`).join('')}
         </select></div>
       </div>
       <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -934,8 +947,8 @@ function pageTaskForm(param) {
         </select></div>
       </div>
       <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div><label>Due date</label><input id="f_due" type="date" value="${esc(t.dueDate||'')}" style="width:100%" ${memberOnly?'disabled':''}/></div>
-        <div><label>Completion date</label><input id="f_completion" type="date" value="${esc(t.completionDate||'')}" style="width:100%"/></div>
+        <div><label>Due date</label><input id="f_due" type="date" onclick="this.showPicker&&this.showPicker()" value="${esc(t.dueDate||'')}" style="width:100%" ${memberOnly?'disabled':''}/></div>
+        <div><label>Completion date</label><input id="f_completion" type="date" onclick="this.showPicker&&this.showPicker()" value="${esc(t.completionDate||'')}" style="width:100%"/></div>
       </div>
       <label>Details / instructions</label>
       <textarea id="f_details" rows="3" style="width:100%" ${memberOnly?'disabled':''}>${esc(t.taskDetailsInstructions||'')}</textarea>
@@ -999,8 +1012,6 @@ function userModalHtml() {
             ${DATA.projects.map(p=>`<option value="${p.id}" ${u.projectMembership&&u.projectMembership.id===p.id?'selected':''}>${esc(p.title)}</option>`).join('')}
           </select></div>
         </div>
-        <label>Password ${isNew?'':'<span style="text-transform:none;letter-spacing:0">(leave blank to keep unchanged; not needed for Google accounts)</span>'}</label>
-        <input id="u_pw" type="password" style="width:100%" autocomplete="new-password"/>
         <div class="modal-actions">
           <button class="btn ghost" onclick="closeModal()">Cancel</button>
           <button class="btn" onclick="saveUser(${isNew?'null':modal.id})">Save</button>
@@ -1012,17 +1023,14 @@ async function saveUser(id) {
   const pid = val('u_project');
   const name = val('u_title').trim();
   const email = val('u_email').trim();
-  const pw = val('u_pw');
   const isNew = id==null;
   if (!name) { document.getElementById('userErrs').innerHTML = `<div class="errs">Name is required.</div>`; return; }
-  if (isNew && pw.length < 6) { document.getElementById('userErrs').innerHTML = `<div class="errs">A password of at least 6 characters is required for a new user.</div>`; return; }
   if (DATA.users.some(u => norm(u.email)===norm(email) && u.id!==id)) { document.getElementById('userErrs').innerHTML = `<div class="errs">That email is already in use.</div>`; return; }
   const rec = {
     title: name, email,
     roleKey: val('u_role'),
     projectMembership: pid ? { id:Number(pid), title:projectById(Number(pid)).title } : null,
   };
-  if (pw) rec.passwordHash = await hashPassword(pw);
   if (isNew) { rec.id = ++DATA.sequences.user; DATA.users.push(rec); }
   else { const existing = userById(id); Object.assign(existing, rec); if (CURRENT_USER.id===id) CURRENT_USER = existing; }
   persist(); modal = null; render();

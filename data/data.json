@@ -16,10 +16,11 @@
     }
   },
   "auth": {
-    "passwordSalt": "pt-static-salt-v1",
     "googleClientId": "497835835974-11lvma8hs7pq1qlkikp03it0fvhtlv6l.apps.googleusercontent.com",
     "allowedDomain": "umich.edu",
-    "adminEmails": ["lukeq@umich.edu"]
+    "adminEmails": [
+      "lukeq@umich.edu"
+    ]
   },
   "enums": {
     "projectStatus": {
@@ -51,16 +52,14 @@
       "title": "Avery Chen",
       "email": "avery.chen@example.com",
       "roleKey": "RoleKey0",
-      "projectMembership": null,
-      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+      "projectMembership": null
     },
     {
       "id": 2,
       "title": "Grace Lin",
       "email": "grace.lin@example.com",
       "roleKey": "RoleKey1",
-      "projectMembership": null,
-      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+      "projectMembership": null
     },
     {
       "id": 3,
@@ -70,8 +69,7 @@
       "projectMembership": {
         "id": 101,
         "title": "Website Redesign"
-      },
-      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+      }
     },
     {
       "id": 4,
@@ -81,8 +79,7 @@
       "projectMembership": {
         "id": 102,
         "title": "Mobile App Launch"
-      },
-      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+      }
     },
     {
       "id": 5,
@@ -92,8 +89,7 @@
       "projectMembership": {
         "id": 101,
         "title": "Website Redesign"
-      },
-      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+      }
     },
     {
       "id": 6,
@@ -103,8 +99,7 @@
       "projectMembership": {
         "id": 102,
         "title": "Mobile App Launch"
-      },
-      "passwordHash": "1d0876a9137d6148b8dd70b0e41658141fde887dd9c4a12df603f906d1cf1004"
+      }
     }
   ],
   "projects": [
