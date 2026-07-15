@@ -21,6 +21,7 @@ The app opens on a sign-in screen.
 - **Sign in with Google** — restricted to verified **@umich.edu** accounts. First sign-in automatically registers the account as a **Member**; an admin can promote it afterwards. If the signing email is listed in `auth.adminEmails` in `data/data.json`, the account is created as an **Admin** — this is the reliable way to register yourself as an admin.
 - **Password login** — for the seeded demo accounts (all use password `demo1234`): `avery.chen@example.com` (Admin), `grace.lin@example.com` (Executive), `bruno.diaz@example.com` (Project Lead), `dev.okoro@example.com` (Member).
 - Manual email/password **registration has been removed**; new accounts come from Google sign-in only.
+- **Delete my account** — available in the sidebar. Deleting your account unassigns your tasks, removes you as a project lead, frees your project-membership slot, and removes the account (on that browser's data). The only remaining Admin cannot self-delete — promote another Admin first, so the site is never left without admin access.
 
 ## Roles
 

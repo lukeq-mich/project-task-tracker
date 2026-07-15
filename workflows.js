@@ -187,6 +187,19 @@
     return data.users.filter((u) => u.projectMembership && u.projectMembership.id === projectId);
   }
 
+  // True when this user is the only Admin left — self-deletion is blocked
+  // in that case so the site never loses all admin access.
+  function isSoleAdmin(data, user) {
+    return isAdmin(user.roleKey) && data.users.filter((u) => isAdmin(u.roleKey)).length === 1;
+  }
+
+  // Strip a departing user out of all references: their assigned tasks become
+  // unassigned and any project they lead loses its lead.
+  function detachUserReferences(data, userId) {
+    data.tasks.forEach((t) => { if (t.assignedTo && t.assignedTo.id === userId) t.assignedTo = null; });
+    data.projects.forEach((p) => { if (p.projectLead && p.projectLead.id === userId) p.projectLead = null; });
+  }
+
   function projectProgress(data, projectId) {
     const items = data.tasks.filter((t) => t.associatedProject && t.associatedProject.id === projectId);
     if (!items.length) return { done: 0, total: 0, pct: 0 };
@@ -225,7 +238,7 @@
     resolveDirectoryUser, tasksForUser,
     parseDateOnly, isTaskOverdue, priorityColor, statusColor,
     dashboardKpis, projectLeadCoverage, upcomingTasks, upcomingTasksForUser,
-    projectLedBy, membersOfProject, projectProgress,
+    projectLedBy, membersOfProject, isSoleAdmin, detachUserReferences, projectProgress,
     validateProject, validateTask,
   };
 })();

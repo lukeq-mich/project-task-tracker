@@ -259,6 +259,7 @@ function render() {
         <div>${esc(CURRENT_USER.email||'')}</div>
         <div class="rolechip" style="margin-top:8px">${esc(roleLabel(CURRENT_USER.roleKey))}</div>
         <button class="btn ghost sm block" style="margin-top:12px" onclick="doLogout()">Log out</button>
+        <button class="btn danger sm block" style="margin-top:8px" onclick="deleteMyAccount()">Delete my account</button>
       </div>
     </aside>
     <main>${renderPage()}</main>`;
@@ -319,6 +320,21 @@ async function doLogin() {
   setSession(u.id); authErr = ''; go('dashboard');
 }
 function doLogout() { clearSession(); route = { name:'dashboard', param:null }; render(); }
+
+function deleteMyAccount() {
+  if (W.isSoleAdmin(DATA, CURRENT_USER)) {
+    alert('You are the only Admin, so your account cannot be deleted — the site would be left without anyone able to manage users or settings. Promote another user to Admin first (Users page).');
+    return;
+  }
+  if (!confirm('Delete your account?\n\nThis unassigns your tasks, removes you as a project lead, frees your project membership, and deletes your account on this browser. This cannot be undone.')) return;
+  const id = CURRENT_USER.id;
+  W.detachUserReferences(DATA, id);
+  DATA.users = DATA.users.filter(u => u.id !== id);
+  persist();
+  clearSession();
+  route = { name:'dashboard', param:null };
+  render();
+}
 
 // Google Identity Services -------------------------------------------------------
 let gsiLoaded = false, gsiLoading = false;
