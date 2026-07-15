@@ -100,6 +100,14 @@
         "id": 102,
         "title": "Mobile App Launch"
       }
+    },
+    {
+      "id": 7,
+      "title": "Luke Quarderer",
+      "email": "lukeq@umich.edu",
+      "roleKey": "RoleKey0",
+      "projectMembership": null,
+      "googleAccount": true
     }
   ],
   "projects": [
@@ -140,6 +148,15 @@
       "startDate": "2026-01-10",
       "endDate": "2026-04-30",
       "projectLead": null
+    },
+    {
+      "title": "test",
+      "startDate": "2026-07-16",
+      "endDate": null,
+      "statusKey": "StatusKey0",
+      "infoUrl": null,
+      "projectLead": null,
+      "id": 105
     }
   ],
   "tasks": [
@@ -244,8 +261,8 @@
     }
   ],
   "sequences": {
-    "user": 6,
-    "project": 104,
+    "user": 7,
+    "project": 105,
     "task": 206
   }
 }
