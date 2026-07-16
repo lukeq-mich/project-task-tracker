@@ -10,7 +10,7 @@ A general-purpose workspace for tracking projects and tasks across a delivery po
 |---|---|
 | `index.html` | The whole app UI — sign-in gate, dashboard, projects (card + list views), tasks, My Tasks, member contributions, users admin, and the admin Settings page. |
 | `workflows.js` | All business rules: role-based access control, role-scoped upcoming tasks, one-lead-per-project and one-membership-per-user rules, overdue detection, colour mapping, KPIs, and validation. |
-| `data/data.json` | Seed content and configuration — users, projects, tasks, enums, theme, and the `auth` block (Google client ID, allowed domain, admin emails, password salt for demo accounts). |
+| `data/data.json` | Seed content and configuration — users, projects, tasks, enums, theme, and the `auth` block (Google client ID, allowed domain, admin emails). |
 | `cover-images/` | Project cover images uploaded through the app (when a GitHub token is configured in Settings). |
 | `.github/workflows/deploy.yml` | Deploys to GitHub Pages on every push to `main`. |
 
@@ -79,6 +79,10 @@ By default this is a **static site with no backend**: accounts, sign-ins, promot
 - Only then does the Worker commit to `data/data.json` (or `cover-images/`) using a GitHub token that is configured **only inside the Worker** and is never sent to any browser.
 
 This means every signed-in user's edits reach the repository, while the GitHub credential itself stays server-side and out of reach of anyone inspecting the page or its network traffic. It's a genuine, verified write path — not "paste a shared secret into the app."
+
+**The Worker enforces permissions server-side.** The browser's role checks in `workflows.js` only decide which buttons to show — they are advisory. The Worker is the real gatekeeper: on every sync it re-reads the committed `data/data.json`, identifies the requester by their verified Google email *against that committed state* (never trusting a role sent in the request), diffs committed→incoming, and rejects the entire sync if any change exceeds the requester's actual role — returning the list of blocked reasons to the app. So a self-registered Member cannot edit their own user object to become Admin: the Worker compares against the committed record and refuses the role change. The only writes an unknown (first-time) signer may make is inserting their own Member record — or Admin if their email is in `auth.adminEmails`. The last remaining Admin can't be demoted or removed.
+
+**Concurrent edits don't silently clobber each other.** Each sync is a server-side read-modify-write against the file's GitHub `sha`: the Worker commits with the exact `sha` it just read, so if someone else committed in between, GitHub rejects it and the Worker retries against fresh state. When shared sync is configured, the browser also treats the repository as the source of truth — it loads the fresh `data/data.json` on startup instead of a stale local cache, and after any rejected or conflicting sync it reloads the latest committed data rather than keeping a diverging local copy.
 
 ### Deploying the Worker
 

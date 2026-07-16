@@ -124,13 +124,170 @@ async function githubPutFile(path, base64Content, message, env) {
   return res.json();
 }
 
-// A light sanity check on the incoming data.json shape — not full validation,
-// just enough to stop obviously malformed payloads from being committed.
+// A light structural sanity check — not authorization, just shape.
 function looksLikeValidData(d) {
   return d && typeof d === 'object'
     && d.meta && d.enums && d.auth
     && Array.isArray(d.users) && Array.isArray(d.projects) && Array.isArray(d.tasks)
     && d.sequences && typeof d.sequences === 'object';
+}
+
+// ---- Server-side authorization ------------------------------------------------
+// The Worker is the real gatekeeper. It never trusts the requester's role from
+// the payload; it looks the requester up in the COMMITTED state by verified email
+// and validates the committed->incoming diff against that role.
+
+const ROLE = { ADMIN:'RoleKey0', EXEC:'RoleKey1', LEAD:'RoleKey2', MEMBER:'RoleKey3' };
+const isAdmin = r => r === ROLE.ADMIN;
+const isExec = r => r === ROLE.EXEC;
+const isLead = r => r === ROLE.LEAD;
+const isMember = r => r === ROLE.MEMBER;
+const isAdminOrExec = r => isAdmin(r) || isExec(r);
+const norm = v => String(v == null ? '' : v).trim().toLowerCase();
+
+const byId = (arr) => { const m = new Map(); (arr||[]).forEach(x => m.set(x.id, x)); return m; };
+const stable = (o) => JSON.stringify(o);
+
+// Returns { ok:true } or { ok:false, reasons:[...] }.
+function authorizeSync(committed, incoming, requesterEmail, env) {
+  const reasons = [];
+  const adminEmails = (committed.auth && committed.auth.adminEmails || env.ADMIN_EMAILS_FALLBACK || '')
+    .toString().split(',').map(norm).filter(Boolean);
+
+  // Identify requester in COMMITTED state (never from the incoming payload).
+  const committedUsers = committed.users || [];
+  const requester = committedUsers.find(u => norm(u.email) === norm(requesterEmail));
+
+  // Config blocks are immutable via sync (auth/enums/meta.theme name etc. change by repo edit only).
+  if (stable(committed.auth) !== stable(incoming.auth)) reasons.push('The auth configuration cannot be changed through the app.');
+  if (stable(committed.enums) !== stable(incoming.enums)) reasons.push('Role/status definitions cannot be changed through the app.');
+
+  const cU = byId(committedUsers), iU = byId(incoming.users);
+  const cP = byId(committed.projects), iP = byId(incoming.projects);
+  const cT = byId(committed.tasks), iT = byId(incoming.tasks);
+
+  // ---- First-time self-insert path -------------------------------------------
+  if (!requester) {
+    // The only writes an unknown user may make: insert exactly their own user record.
+    // Everything else (projects, tasks, other users) must be byte-identical to committed.
+    const addedUsers = [...iU.values()].filter(u => !cU.has(u.id));
+    const removedUsers = [...cU.values()].filter(u => !iU.has(u.id));
+    const changedUsers = [...iU.values()].filter(u => cU.has(u.id) && stable(cU.get(u.id)) !== stable(u));
+
+    if (removedUsers.length || changedUsers.length) reasons.push('New accounts may not modify or remove existing users.');
+    if (addedUsers.length !== 1) reasons.push('A new sign-in may only create its own account.');
+    else {
+      const nu = addedUsers[0];
+      if (norm(nu.email) !== norm(requesterEmail)) reasons.push('A new account must match your signed-in email.');
+      const allowedRole = adminEmails.includes(norm(requesterEmail)) ? ROLE.ADMIN : ROLE.MEMBER;
+      if (nu.roleKey !== allowedRole) reasons.push(`New accounts are created as ${allowedRole===ROLE.ADMIN?'Admin (via adminEmails)':'Member'}.`);
+      if (nu.projectMembership) reasons.push('New accounts start with no project membership.');
+    }
+    if (stable(committed.projects) !== stable(incoming.projects)) reasons.push('New accounts may not change projects.');
+    if (stable(committed.tasks) !== stable(incoming.tasks)) reasons.push('New accounts may not change tasks.');
+    return reasons.length ? { ok:false, reasons } : { ok:true };
+  }
+
+  const role = requester.roleKey;
+
+  // ---- USERS diff -------------------------------------------------------------
+  const addedUsers = [...iU.values()].filter(u => !cU.has(u.id));
+  const removedUsers = [...cU.values()].filter(u => !iU.has(u.id));
+  const changedUsers = [...iU.values()].filter(u => cU.has(u.id) && stable(cU.get(u.id)) !== stable(u));
+
+  // Adding brand-new users (other than the requester's own already-present record):
+  addedUsers.forEach(u => {
+    const selfInsert = norm(u.email) === norm(requesterEmail);
+    if (selfInsert) {
+      // requester already exists in committed, so a self "add" shouldn't happen; treat as admin-only.
+      if (!isAdmin(role)) reasons.push('Only admins can add users.');
+    } else if (!isAdmin(role)) {
+      reasons.push('Only admins can add users.');
+    }
+  });
+  if (removedUsers.length && !isAdmin(role)) reasons.push('Only admins can delete users.');
+
+  changedUsers.forEach(u => {
+    const before = cU.get(u.id);
+    const roleChanged = before.roleKey !== u.roleKey;
+    const identityChanged = norm(before.email) !== norm(u.email) || before.title !== u.title;
+    const membershipChanged = stable(before.projectMembership||null) !== stable(u.projectMembership||null);
+
+    if (roleChanged && !isAdmin(role)) reasons.push(`Only admins can change roles (attempted on ${before.title||before.email}).`);
+    // Identity edits to other people are admin-only; editing your own name is allowed.
+    if (identityChanged && !isAdmin(role) && u.id !== requester.id) reasons.push('Only admins can edit other users.');
+    // Membership changes: admins/execs manage anyone; a member may only clear their OWN membership (leave a project).
+    if (membershipChanged && !isAdminOrExec(role)) {
+      const own = u.id === requester.id;
+      const clearingOnly = own && (u.projectMembership == null);
+      if (!clearingOnly) reasons.push('Only admins or executives can assign project membership.');
+    }
+  });
+
+  // Never allow the last admin to be removed/demoted (integrity guard, all roles).
+  const committedAdmins = committedUsers.filter(u => isAdmin(u.roleKey)).length;
+  const incomingAdmins = (incoming.users||[]).filter(u => isAdmin(u.roleKey)).length;
+  if (committedAdmins >= 1 && incomingAdmins === 0) reasons.push('The last admin cannot be removed or demoted.');
+
+  // ---- PROJECTS diff ----------------------------------------------------------
+  const addedProjects = [...iP.values()].filter(p => !cP.has(p.id));
+  const removedProjects = [...cP.values()].filter(p => !iP.has(p.id));
+  const changedProjects = [...iP.values()].filter(p => cP.has(p.id) && stable(cP.get(p.id)) !== stable(p));
+  if ((addedProjects.length || removedProjects.length || changedProjects.length) && !isAdminOrExec(role)) {
+    reasons.push('Only admins or executives can create, edit, or delete projects.');
+  }
+
+  // ---- TASKS diff -------------------------------------------------------------
+  const addedTasks = [...iT.values()].filter(t => !cT.has(t.id));
+  const removedTasks = [...cT.values()].filter(t => !iT.has(t.id));
+  const changedTasks = [...iT.values()].filter(t => cT.has(t.id) && stable(cT.get(t.id)) !== stable(t));
+
+  const leadsProject = (projId) => {
+    const p = cP.get(projId) || iP.get(projId);
+    return p && p.projectLead && p.projectLead.id === requester.id;
+  };
+
+  if ((addedTasks.length || removedTasks.length) && !(isAdminOrExec(role) || isLead(role))) {
+    reasons.push('Only admins, executives, or project leads can create or delete tasks.');
+  }
+  // Leads may only add/delete tasks within projects they lead.
+  if (isLead(role) && !isAdminOrExec(role)) {
+    addedTasks.concat(removedTasks).forEach(t => {
+      const pid = t.associatedProject && t.associatedProject.id;
+      if (!leadsProject(pid)) reasons.push('Project leads can only add or delete tasks in projects they lead.');
+    });
+  }
+  changedTasks.forEach(t => {
+    const before = cT.get(t.id);
+    if (isAdminOrExec(role)) return;
+    if (isLead(role) && leadsProject(before.associatedProject && before.associatedProject.id)) return;
+    if (isMember(role)) {
+      // Members may only edit status/completionDate of tasks assigned to them.
+      const own = before.assignedTo && before.assignedTo.id === requester.id;
+      const onlyAllowedFields = ['statusKey','completionDate'].every(() => true);
+      const changedKeys = Object.keys({...before, ...t}).filter(k => stable(before[k]) !== stable(t[k]));
+      const disallowed = changedKeys.filter(k => k !== 'statusKey' && k !== 'completionDate');
+      if (!own) reasons.push('Members can only update tasks assigned to them.');
+      else if (disallowed.length) reasons.push(`Members can only change task status and completion date (attempted: ${disallowed.join(', ')}).`);
+      return;
+    }
+    reasons.push('You are not permitted to edit this task.');
+  });
+
+  // De-duplicate reasons for a clean message.
+  return reasons.length ? { ok:false, reasons:[...new Set(reasons)] } : { ok:true };
+}
+
+async function githubGetFile(path, env) {
+  const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/${path}`, {
+    headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'project-task-tracker-worker' },
+  });
+  if (!res.ok) return { sha: undefined, json: undefined };
+  const j = await res.json();
+  const content = j.content ? decodeURIComponent(escape(atob(j.content.replace(/\n/g, '')))) : undefined;
+  let parsed;
+  try { parsed = content ? JSON.parse(content) : undefined; } catch { parsed = undefined; }
+  return { sha: j.sha, json: parsed };
 }
 
 export default {
@@ -152,16 +309,40 @@ export default {
       if (request.method === 'POST' && url.pathname === '/sync') {
         const body = await request.json();
         if (!looksLikeValidData(body.data)) return json({ error: 'Malformed data payload' }, 400, env);
-        const content = JSON.stringify(body.data, null, 2);
-        const base64 = btoa(unescape(encodeURIComponent(content)));
-        await githubPutFile('data/data.json', base64, `Update data (via ${payload.email})`, env);
-        return json({ ok: true }, 200, env);
+
+        // Optimistic-concurrency read-modify-write with a small retry loop.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const { sha, json: committed } = await githubGetFile('data/data.json', env);
+          if (!committed) return json({ error: 'Could not read current data from the repository.' }, 502, env);
+
+          const decision = authorizeSync(committed, body.data, payload.email, env);
+          if (!decision.ok) return json({ error: 'Change not permitted for your role.', blocked: decision.reasons }, 403, env);
+
+          const content = JSON.stringify(body.data, null, 2);
+          const base64 = btoa(unescape(encodeURIComponent(content)));
+          const res = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/data/data.json`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'project-task-tracker-worker' },
+            body: JSON.stringify({ message: `Update data (via ${payload.email})`, content: base64, ...(sha ? { sha } : {}) }),
+          });
+          if (res.ok) return json({ ok: true, data: body.data }, 200, env);
+          if (res.status === 409) continue; // sha moved; someone else wrote — retry against fresh state
+          const t = await res.text();
+          throw new Error(`GitHub write failed (${res.status}): ${t.slice(0, 300)}`);
+        }
+        return json({ error: 'Sync kept colliding with concurrent updates. Reload and try again.' }, 409, env);
       }
 
       if (request.method === 'POST' && url.pathname === '/upload') {
         const body = await request.json();
         const { filename, dataUrl } = body;
         if (!filename || !dataUrl || !dataUrl.startsWith('data:')) return json({ error: 'Malformed upload payload' }, 400, env);
+        // Uploading a cover image requires an existing project-editing role.
+        const { json: committed } = await githubGetFile('data/data.json', env);
+        const requester = (committed && committed.users || []).find(u => norm(u.email) === norm(payload.email));
+        if (!requester || !isAdminOrExec(requester.roleKey)) {
+          return json({ error: 'Only admins or executives can upload cover images.' }, 403, env);
+        }
         const base64 = dataUrl.split(',')[1];
         const safe = String(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
         const path = `cover-images/${Date.now()}-${safe}`;

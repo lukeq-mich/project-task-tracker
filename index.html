@@ -205,16 +205,18 @@ async function boot() {
       '<main><h2>Could not load data</h2><p>Ensure data/data.json is present and the page is served over http/https.</p></main>';
     return;
   }
+  const s = loadJson(SETTINGS_KEY); if (s) SETTINGS = Object.assign(SETTINGS, s);
   const stored = loadJson(STORE_KEY);
+  // When shared sync is configured, the repository is the source of truth:
+  // always start from the freshly fetched data.json so a stale local cache can
+  // never overwrite newer committed work. Without sync, keep local-first (offline) behavior.
+  const useRepoAsTruth = !!SETTINGS.workerUrl;
+  const src = (stored && !useRepoAsTruth) ? stored : seed;
   DATA = {
     meta: seed.meta, enums: seed.enums, auth: seed.auth,
-    users: stored ? stored.users : seed.users,
-    projects: stored ? stored.projects : seed.projects,
-    tasks: stored ? stored.tasks : seed.tasks,
-    sequences: stored ? stored.sequences : seed.sequences,
+    users: src.users, projects: src.projects, tasks: src.tasks, sequences: src.sequences,
   };
-  if (!stored) persist();
-  const s = loadJson(SETTINGS_KEY); if (s) SETTINGS = Object.assign(SETTINGS, s);
+  if (!stored || useRepoAsTruth) persist();
   applyBranding();
   const sess = loadJson(SESSION_KEY);
   if (sess) CURRENT_USER = DATA.users.find(u => u.id === sess.userId) || null;
@@ -249,6 +251,19 @@ async function syncToRepo() {
       if (route.name==='settings') render();
       return;
     }
+    if (res.status === 403) {
+      const j = await res.json().catch(()=>({}));
+      const list = (j.blocked && j.blocked.length) ? '\n\n• ' + j.blocked.join('\n• ') : '';
+      lastSync = 'Sync rejected (not permitted for your role).';
+      alert('That change wasn\u2019t allowed and was not saved to the shared data:' + list + '\n\nYour view may now be out of date \u2014 reloading the latest data.');
+      await refreshFromServer();
+      return;
+    }
+    if (res.status === 409) {
+      lastSync = 'Sync retried due to a concurrent update. Reloading latest data.';
+      await refreshFromServer();
+      return;
+    }
     if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error || ('HTTP '+res.status)); }
     lastSync = 'Synced ' + new Date().toLocaleTimeString();
   } catch (e) {
@@ -256,6 +271,19 @@ async function syncToRepo() {
     lastSync = 'Sync failed: ' + e.message;
   }
   if (route.name==='settings') render();
+}
+
+// Pull the canonical committed data.json and replace local state with it.
+// Used after a rejected/conflicting sync so the browser never keeps diverging.
+async function refreshFromServer() {
+  try {
+    const fresh = await (await fetch('data/data.json?ts=' + Date.now(), { cache:'no-store' })).json();
+    DATA.meta = fresh.meta; DATA.enums = fresh.enums; DATA.auth = fresh.auth;
+    DATA.users = fresh.users; DATA.projects = fresh.projects; DATA.tasks = fresh.tasks; DATA.sequences = fresh.sequences;
+    saveJson(STORE_KEY, { users:DATA.users, projects:DATA.projects, tasks:DATA.tasks, sequences:DATA.sequences });
+    if (CURRENT_USER) { const me = DATA.users.find(u => u.id === CURRENT_USER.id); if (me) CURRENT_USER = me; }
+    render();
+  } catch (e) { console.warn('Could not refresh from server:', e.message); }
 }
 function persistSettings(){ saveJson(SETTINGS_KEY, SETTINGS); }
 function setSession(id, googleIdToken){
