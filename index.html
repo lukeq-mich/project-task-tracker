@@ -134,7 +134,7 @@ const STORE_KEY = 'projectTracker.state.v1';
 const SESSION_KEY = 'projectTracker.session.v1';
 const SETTINGS_KEY = 'projectTracker.settings.v1';
 const TOKEN_KEY = 'projectTracker.googleToken.v1';
-let DATA = null, CURRENT_USER = null, modal = null, GOOGLE_ID_TOKEN = null;
+let DATA = null, CURRENT_USER = null, modal = null, GOOGLE_ID_TOKEN = null, VIEW_AS = null;
 let SETTINGS = { logoDataUrl:null, theme:{}, workerUrl:'' };
 let route = { name: 'dashboard', param: null };
 let COVER_PENDING = null; // { dataUrl, name } staged on the project form
@@ -227,6 +227,17 @@ function applyBranding() {
 
 // ---- Helpers ------------------------------------------------------------------
 const enums = () => DATA.enums;
+// The role the UI should reflect. Admins can preview lower roles via "View as";
+// everyone else always sees their real role. Never elevates above the real role.
+function effectiveRole() {
+  if (VIEW_AS && CURRENT_USER && W.isAdmin(CURRENT_USER.roleKey)) return VIEW_AS;
+  return CURRENT_USER ? CURRENT_USER.roleKey : null;
+}
+function setViewAs(roleKey) {
+  VIEW_AS = (roleKey && roleKey !== CURRENT_USER.roleKey) ? roleKey : null;
+  route = { name:'dashboard', param:null };
+  render();
+}
 function brandInitials() {
   const words = (DATA.meta.name || 'Project Tracker').trim().split(/\s+/);
   return words.slice(0,2).map(w => w[0]).join('').toUpperCase();
@@ -268,7 +279,8 @@ function render() {
   if (focusId && typeof active.selectionStart === 'number') selStart = active.selectionStart;
 
   if (!CURRENT_USER) { app.innerHTML = renderAuth(); initGoogleSignIn(); return; }
-  const role = CURRENT_USER.roleKey;
+  const role = effectiveRole();
+  const realRole = CURRENT_USER.roleKey;
   const navItems = [
     { name:'dashboard', label:'Dashboard', show:W.canViewDashboard(role) },
     { name:'projects', label:'Projects', show:W.canViewProjectList(role) },
@@ -293,12 +305,18 @@ function render() {
       <div class="who">
         <div class="name">${esc(CURRENT_USER.title)}</div>
         <div>${esc(CURRENT_USER.email||'')}</div>
-        <div class="rolechip" style="margin-top:8px">${esc(roleLabel(CURRENT_USER.roleKey))}</div>
+        <div class="rolechip" style="margin-top:8px">${esc(roleLabel(role))}${VIEW_AS?' <span style="color:var(--muted)">(preview)</span>':''}</div>
+        ${W.isAdmin(realRole)?`
+          <label style="margin-top:12px">View as role</label>
+          <select onchange="setViewAs(this.value)" style="width:100%">
+            <option value="">Admin (your role)</option>
+            ${Object.entries(enums().userRole).filter(([k])=>k!==W.ROLE.ADMIN).map(([k,v])=>`<option value="${k}" ${VIEW_AS===k?'selected':''}>${v}</option>`).join('')}
+          </select>`:''}
         <button class="btn ghost sm block" style="margin-top:12px" onclick="doLogout()">Log out</button>
-        <button class="btn danger sm block" style="margin-top:8px" onclick="deleteMyAccount()">Delete my account</button>
+        ${VIEW_AS?'':`<button class="btn danger sm block" style="margin-top:8px" onclick="deleteMyAccount()">Delete my account</button>`}
       </div>
     </aside>
-    <main>${renderPage()}</main>`;
+    <main>${VIEW_AS?`<div class="note" style="border-left-color:#c2701c;margin-bottom:18px">You're previewing the site as <strong>${esc(roleLabel(VIEW_AS))}</strong>. Your real role is Admin. <span class="linklike" onclick="setViewAs('')">Back to Admin</span></div>`:''}${renderPage()}</main>`;
 
   // Restore focus + caret (search inputs etc.)
   if (focusId) {
@@ -343,7 +361,7 @@ function renderAuth() {
       </div>
     </div>`;
 }
-function doLogout() { clearSession(); route = { name:'dashboard', param:null }; render(); }
+function doLogout() { clearSession(); VIEW_AS = null; route = { name:'dashboard', param:null }; render(); }
 
 function deleteMyAccount() {
   if (W.isSoleAdmin(DATA, CURRENT_USER)) {
@@ -425,8 +443,8 @@ function pageDashboard() {
   const coverage = W.projectLeadCoverage(DATA);
   const upcoming = W.upcomingTasksForUser(DATA, CURRENT_USER, 6);
   const recent = [...DATA.projects].slice(-4).reverse();
-  const scopeNote = W.isMember(CURRENT_USER.roleKey) ? ' (assigned to you)'
-    : W.isProjectLead(CURRENT_USER.roleKey) ? ' (in your projects)' : '';
+  const scopeNote = W.isMember(effectiveRole()) ? ' (assigned to you)'
+    : W.isProjectLead(effectiveRole()) ? ' (in your projects)' : '';
   return `
     <div class="page-head"><div><h2>Dashboard</h2><p>Portfolio overview and upcoming work.</p></div></div>
     <div class="kpis">
@@ -471,7 +489,7 @@ function pageDashboard() {
 let projFilter = { status:'', lead:'' };
 let projView = 'cards';
 function pageProjects() {
-  const role = CURRENT_USER.roleKey;
+  const role = effectiveRole();
   let list = DATA.projects;
   if (projFilter.status) list = list.filter(p=>p.statusKey===projFilter.status);
   if (projFilter.lead) list = list.filter(p=>p.projectLead && String(p.projectLead.id)===projFilter.lead);
@@ -530,7 +548,7 @@ function projectListHtml(list) {
 
 // ---- Project detail -----------------------------------------------------------
 function pageProjectDetail(id) {
-  const role = CURRENT_USER.roleKey;
+  const role = effectiveRole();
   const p = projectById(Number(id));
   if (!p) return `<p>Project not found. <span class="linklike" onclick="go('projects')">Back</span></p>`;
   const tasks = DATA.tasks.filter(t=>t.associatedProject && t.associatedProject.id===p.id);
@@ -633,7 +651,7 @@ function removeMember(userId) {
 
 // ---- Task detail ---------------------------------------------------------------
 function pageTaskDetail(id) {
-  const role = CURRENT_USER.roleKey;
+  const role = effectiveRole();
   const t = taskById(Number(id));
   if (!t) return `<p>Task not found. <span class="linklike" onclick="go('projects')">Back</span></p>`;
   return `
@@ -919,7 +937,7 @@ function deleteProject(id) {
 
 // ---- Task form ---------------------------------------------------------------------
 function pageTaskForm(param) {
-  const role = CURRENT_USER.roleKey;
+  const role = effectiveRole();
   const isNew = String(param).startsWith('new');
   let presetProject = null;
   if (isNew && String(param).includes(':')) presetProject = Number(String(param).split(':')[1]);
@@ -967,7 +985,7 @@ function pageTaskForm(param) {
     </div>`;
 }
 function saveTask(id) {
-  const role = CURRENT_USER.roleKey;
+  const role = effectiveRole();
   const memberOnly = W.canUpdateTaskMemberFields(role) && !W.canUpdateTaskCoreFields(role);
   const existing = id!=null ? taskById(id) : null;
   let rec;

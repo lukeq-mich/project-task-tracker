@@ -37,6 +37,8 @@ Four roles. **Admin** and **Executive** are identical except that only Admins ma
 | Users admin (create / edit / delete / promote users) | ✓ | | | |
 | Settings (logo, theme, integrations) | ✓ | | | |
 
+**View as role (admins only):** the sidebar has a "View as role" selector letting an admin preview the site as an Executive, Project Lead, or Member. It's a local, per-browser view override — your real role stays Admin, nothing is saved or synced, and a banner plus a "Back to Admin" link keep it obvious you're previewing. It only ever previews *lower* roles (it can never elevate anyone), and the destructive "Delete my account" action is hidden while previewing.
+
 **Role-scoped dashboard:** the "Upcoming tasks" panel shows Members only their own assigned tasks, Project Leads the tasks in projects they lead, and Admins/Executives tasks across all projects.
 
 ## Projects
