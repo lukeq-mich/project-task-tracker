@@ -552,11 +552,32 @@ function pageDashboard() {
 // ---- Projects list (list + card views) -------------------------------------------
 let projFilter = { status:'', lead:'' };
 let projView = 'cards';
+let projSort = { key:'', dir:'asc' }; // key: '' | 'startDate' | 'endDate'
+let taskDueSort = ''; // '' | 'asc' | 'desc' — sorts tasks by due date on the project board
+// Generic date sort: undated items always sort to the end regardless of direction.
+function sortByDate(list, key, dir) {
+  if (!key) return list;
+  const mul = dir === 'asc' ? 1 : -1;
+  return [...list].sort((a,b) => {
+    const da = W.parseDateOnly(a[key]), db = W.parseDateOnly(b[key]);
+    if (!da && !db) return 0;
+    if (!da) return 1;      // a undated -> after b
+    if (!db) return -1;     // b undated -> after a
+    return mul * (da - db);
+  });
+}
+function setProjSort(key) {
+  if (projSort.key === key) projSort.dir = projSort.dir === 'asc' ? 'desc' : 'asc';
+  else projSort = { key, dir:'asc' };
+  render();
+}
+const sortArrow = (state, key) => state.key===key ? (state.dir==='asc'?' ▲':' ▼') : '';
 function pageProjects() {
   const role = effectiveRole();
   let list = DATA.projects;
   if (projFilter.status) list = list.filter(p=>p.statusKey===projFilter.status);
   if (projFilter.lead) list = list.filter(p=>p.projectLead && String(p.projectLead.id)===projFilter.lead);
+  list = sortByDate(list, projSort.key, projSort.dir);
   const leads = DATA.users.filter(u=>W.canBeProjectLead(u.roleKey)).sort(byName);
   return `
     <div class="page-head">
@@ -578,8 +599,20 @@ function pageProjects() {
         <option value="">All leads</option>
         ${leads.map(u=>`<option value="${u.id}" ${projFilter.lead===String(u.id)?'selected':''}>${esc(u.title)}</option>`).join('')}
       </select>
+      <select onchange="applyProjSortFromSelect(this.value)" title="Sort by date">
+        <option value="" ${!projSort.key?'selected':''}>Sort: default</option>
+        <option value="startDate:asc" ${projSort.key==='startDate'&&projSort.dir==='asc'?'selected':''}>Start date ↑</option>
+        <option value="startDate:desc" ${projSort.key==='startDate'&&projSort.dir==='desc'?'selected':''}>Start date ↓</option>
+        <option value="endDate:asc" ${projSort.key==='endDate'&&projSort.dir==='asc'?'selected':''}>End date ↑</option>
+        <option value="endDate:desc" ${projSort.key==='endDate'&&projSort.dir==='desc'?'selected':''}>End date ↓</option>
+      </select>
     </div>
     ${projView==='cards' ? projectCardsHtml(list) : projectListHtml(list)}`;
+}
+function applyProjSortFromSelect(v) {
+  if (!v) { projSort = { key:'', dir:'asc' }; }
+  else { const [key,dir] = v.split(':'); projSort = { key, dir }; }
+  render();
 }
 function projectCardsHtml(list) {
   if (!list.length) return `<div class="card"><div class="empty">No projects match.</div></div>`;
@@ -597,7 +630,10 @@ function projectCardsHtml(list) {
 function projectListHtml(list) {
   return `<div class="card">
     <table>
-      <thead><tr><th>Project</th><th>Lead</th><th>Status</th><th>Start</th><th>End</th><th>Tasks</th></tr></thead>
+      <thead><tr><th>Project</th><th>Lead</th><th>Status</th>
+        <th class="sortable" onclick="setProjSort('startDate')">Start${sortArrow(projSort,'startDate')}</th>
+        <th class="sortable" onclick="setProjSort('endDate')">End${sortArrow(projSort,'endDate')}</th>
+        <th>Tasks</th></tr></thead>
       <tbody>${list.length?list.map(p=>{const pr=W.projectProgress(DATA,p.id);return `
         <tr>
           <td><span class="linklike" onclick="go('project',${p.id})">${esc(p.title)}</span></td>
@@ -651,12 +687,22 @@ function pageProjectDetail(id) {
         </span>`).join('')}</div>`
         :''}
     </div>
+    <div class="toolbar" style="margin-bottom:14px">
+      <span style="color:var(--muted);font-size:12.5px">Sort tasks:</span>
+      <select onchange="taskDueSort=this.value;render()" title="Sort tasks by due date">
+        <option value="" ${!taskDueSort?'selected':''}>Default order</option>
+        <option value="asc" ${taskDueSort==='asc'?'selected':''}>Due date ↑ (soonest first)</option>
+        <option value="desc" ${taskDueSort==='desc'?'selected':''}>Due date ↓ (latest first)</option>
+      </select>
+    </div>
     <div class="kanban">
-      ${cols.map(([k,label])=>`
+      ${cols.map(([k,label])=>{
+        const colTasks = sortByDate(tasks.filter(t=>t.statusKey===k), taskDueSort?'dueDate':'', taskDueSort||'asc');
+        return `
         <div class="col">
-          <h4>${label} (${tasks.filter(t=>t.statusKey===k).length})</h4>
-          ${tasks.filter(t=>t.statusKey===k).map(t=>taskCardHtml(t)).join('') || '<div class="empty" style="padding:10px">—</div>'}
-        </div>`).join('')}
+          <h4>${label} (${colTasks.length})</h4>
+          ${colTasks.map(t=>taskCardHtml(t)).join('') || '<div class="empty" style="padding:10px">—</div>'}
+        </div>`;}).join('')}
     </div>
     ${modal && modal.type==='members' ? membersModalHtml() : ''}`;
 }
