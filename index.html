@@ -553,7 +553,6 @@ function pageDashboard() {
 let projFilter = { status:'', lead:'' };
 let projView = 'cards';
 let projSort = { key:'', dir:'asc' }; // key: '' | 'startDate' | 'endDate'
-let taskDueSort = ''; // '' | 'asc' | 'desc' — sorts tasks by due date on the project board
 // Generic date sort: undated items always sort to the end regardless of direction.
 function sortByDate(list, key, dir) {
   if (!key) return list;
@@ -687,17 +686,9 @@ function pageProjectDetail(id) {
         </span>`).join('')}</div>`
         :''}
     </div>
-    <div class="toolbar" style="margin-bottom:14px">
-      <span style="color:var(--muted);font-size:12.5px">Sort tasks:</span>
-      <select onchange="taskDueSort=this.value;render()" title="Sort tasks by due date">
-        <option value="" ${!taskDueSort?'selected':''}>Default order</option>
-        <option value="asc" ${taskDueSort==='asc'?'selected':''}>Due date ↑ (soonest first)</option>
-        <option value="desc" ${taskDueSort==='desc'?'selected':''}>Due date ↓ (latest first)</option>
-      </select>
-    </div>
     <div class="kanban">
       ${cols.map(([k,label])=>{
-        const colTasks = sortByDate(tasks.filter(t=>t.statusKey===k), taskDueSort?'dueDate':'', taskDueSort||'asc');
+        const colTasks = tasks.filter(t=>t.statusKey===k);
         return `
         <div class="col">
           <h4>${label} (${colTasks.length})</h4>

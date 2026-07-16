@@ -58,7 +58,6 @@ Four roles. **Admin** and **Executive** are identical except that only Admins ma
 - A task is **overdue** when its due date is past and it isn't Completed.
 - **My Tasks** supports filtering by status/priority and **sorting by due date** (click the Due column header to toggle ascending/descending).
 - **Projects can be sorted by start or end date** — in list view, click the Start or End column header to toggle ascending/descending; a "Sort" dropdown in the toolbar does the same and also applies to the card view. Projects without a date sort to the end.
-- **The project task board can be sorted by due date** — a "Sort tasks" control orders tasks within each status column (soonest or latest first).
 
 ## Admin Settings
 
