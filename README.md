@@ -107,4 +107,8 @@ Edit `data/data.json` and push to `main`; the deploy workflow republishes automa
 
 ---
 
+## Mobile / iOS
+
+The interface is responsive and works in Safari on iPhone. On narrow screens the sidebar collapses into a top bar with a hamburger menu that slides the navigation in as a drawer; layouts stack to a single column, wide tables scroll horizontally, forms and modals go full-width, inputs use a 16px font so iOS doesn't auto-zoom on focus, and the layout respects the iPhone's safe areas (notch / home indicator).
+
 Built with plain HTML, CSS, and JavaScript.

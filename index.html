@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Project Tracker</title>
 <link rel="icon" href="favicon.svg" id="faviconLink" />
 <style>
@@ -17,6 +17,9 @@
   a { color:var(--accent); text-decoration:none; }
   a:hover { text-decoration:underline; }
   .app { display:flex; min-height:100vh; }
+  /* Mobile top bar + drawer scrim: hidden on desktop, shown under the media query */
+  .mobilebar { display:none; }
+  .drawer-scrim { display:none; }
   aside { width:230px; background:#0b0f14; border-right:1px solid var(--border);
     padding:20px 14px; flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto; }
   .brand { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
@@ -44,7 +47,6 @@
   .kpi .l { color:var(--muted); font-size:12.5px; margin-top:2px; }
   .kpi.warn .n { color:#e07a7a; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-  @media (max-width:820px){ .grid2 { grid-template-columns:1fr; } aside{ display:none; } }
   .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
   .card h3 { margin:0 0 12px; font-size:15px; }
   table { width:100%; border-collapse:collapse; }
@@ -70,7 +72,6 @@
   input:focus,select:focus,textarea:focus { outline:2px solid var(--accent); outline-offset:-1px; }
   label { display:block; font-size:12px; color:var(--muted); margin:12px 0 5px; }
   .kanban { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-  @media (max-width:820px){ .kanban { grid-template-columns:1fr; } }
   .col h4 { margin:0 0 10px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
   .taskcard { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:11px; margin-bottom:9px; cursor:pointer; }
   .taskcard:hover { border-color:var(--accent); }
@@ -122,6 +123,62 @@
   .setrow .lbl { width:130px; color:var(--muted); font-size:12.5px; }
   .logoprev { width:44px; height:44px; border-radius:9px; border:1px solid var(--border); object-fit:cover; background:var(--surface2); }
   .coverprev { max-width:280px; max-height:130px; border-radius:8px; border:1px solid var(--border); display:block; margin-top:8px; object-fit:cover; }
+
+  /* ===================== Mobile / iOS Safari ===================== */
+  @media (max-width:820px) {
+    .mobilebar {
+      display:flex; align-items:center; gap:12px;
+      position:sticky; top:0; z-index:40;
+      background:#0b0f14; border-bottom:1px solid var(--border);
+      padding:10px 14px; padding-top:calc(10px + env(safe-area-inset-top));
+      padding-left:calc(14px + env(safe-area-inset-left));
+    }
+    .hamburger { background:none; border:none; color:var(--fg); font-size:22px; line-height:1; padding:4px 6px; cursor:pointer; }
+    .mobilebar-title { font-weight:600; font-size:15px; }
+
+    aside {
+      position:fixed; top:0; left:0; bottom:0; z-index:60;
+      width:80vw; max-width:300px; height:100%;
+      transform:translateX(-100%); transition:transform .22s ease;
+      padding-top:calc(20px + env(safe-area-inset-top));
+      padding-left:calc(14px + env(safe-area-inset-left));
+    }
+    body.drawer-open aside { transform:translateX(0); box-shadow:0 0 40px rgba(0,0,0,.5); }
+    body.drawer-open .drawer-scrim { display:block; position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.5); }
+
+    .app { flex-direction:column; }
+    main {
+      padding:16px; max-width:100%;
+      padding-left:calc(16px + env(safe-area-inset-left));
+      padding-right:calc(16px + env(safe-area-inset-right));
+      padding-bottom:calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .grid2 { grid-template-columns:1fr; }
+    .kanban { grid-template-columns:1fr; }
+    .cardgrid { grid-template-columns:1fr; }
+    .modal .row { grid-template-columns:1fr; }
+    .page-head { flex-direction:column; align-items:stretch; }
+    .page-head h2 { font-size:19px; }
+
+    .card .row[style*="grid-template-columns"] { grid-template-columns:1fr !important; }
+
+    .card > table, main .card table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; white-space:nowrap; }
+
+    .modal-bg { padding:16px; padding-top:calc(24px + env(safe-area-inset-top)); align-items:flex-start; }
+    .modal { max-width:100%; }
+
+    .setrow .lbl { width:100%; }
+    .setrow input { width:100% !important; min-width:0 !important; }
+
+    /* Prevent iOS auto-zoom on input focus: fields must be >=16px */
+    input, select, textarea { font-size:16px; }
+  }
+
+  @media (max-width:400px) {
+    .kpis { grid-template-columns:1fr 1fr; }
+    main { padding:12px; }
+  }
 </style>
 </head>
 <body>
@@ -257,7 +314,9 @@ const byName = (a,b) => String(a.title||'').localeCompare(String(b.title||''));
 const userById = (id) => DATA.users.find(u => u.id === id);
 const projectById = (id) => DATA.projects.find(p => p.id === id);
 const taskById = (id) => DATA.tasks.find(t => t.id === id);
-function go(name, param=null){ route = { name, param }; COVER_PENDING = null; window.scrollTo(0,0); render(); }
+function go(name, param=null){ route = { name, param }; COVER_PENDING = null; closeDrawer(); window.scrollTo(0,0); render(); }
+function toggleDrawer(){ document.body.classList.toggle('drawer-open'); }
+function closeDrawer(){ document.body.classList.remove('drawer-open'); }
 function statusBadge(k, label){ return `<span class="badge" style="background:${W.statusColor(k)}">${esc(label)}</span>`; }
 function priorityBadge(k){ return `<span class="badge" style="background:${W.priorityColor(k)}">${esc(taskPriorityLabel(k))}</span>`; }
 function coverSrc(p){ return p.coverImage ? (p.coverImage.url || p.coverImage.dataUrl || null) : null; }
@@ -294,6 +353,11 @@ function render() {
   if (!allowedNames.has(route.name)) route = { name:'dashboard', param:null };
 
   app.innerHTML = `
+    <div class="mobilebar">
+      <button class="hamburger" onclick="toggleDrawer()" aria-label="Menu">&#9776;</button>
+      <div class="mobilebar-title">${esc(DATA.meta.name)}</div>
+    </div>
+    <div class="drawer-scrim" onclick="closeDrawer()"></div>
     <aside>
       <div class="brand">
         <div class="shield">${brandShieldHtml()}</div>
