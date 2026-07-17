@@ -1,14 +1,20 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "project-task-tracker-sync",
+  "main": "worker/worker.js",
   "compatibility_date": "2026-07-17",
   "observability": {
     "enabled": true
   },
-  "assets": {
-    "directory": "."
-  },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  // Non-secret configuration. GITHUB_TOKEN is deliberately NOT here — it is a
+  // Secret set in the Cloudflare dashboard and is preserved across deploys.
+  "vars": {
+    "GITHUB_REPO": "lukeq-mich/project-task-tracker",
+    "GOOGLE_CLIENT_ID": "497835835974-11lvma8hs7pq1qlkikp03it0fvhtlv6l.apps.googleusercontent.com",
+    "ALLOWED_DOMAIN": "umich.edu",
+    "ALLOWED_ORIGIN": "https://lukeq-mich.github.io"
+  }
 }

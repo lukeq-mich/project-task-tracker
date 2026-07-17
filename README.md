@@ -86,19 +86,15 @@ This means every signed-in user's edits reach the repository, while the GitHub c
 
 ### Deploying the Worker
 
-The Worker source is in [`worker/worker.js`](worker/worker.js).
+The Worker source is in [`worker/worker.js`](worker/worker.js), and it deploys **from this repository** via Cloudflare Workers Builds: the repo is connected to the `project-task-tracker-sync` Worker in the Cloudflare dashboard, and every push to `main` redeploys it using [`wrangler.jsonc`](wrangler.jsonc). That config is the source of truth — it points the Worker at `worker/worker.js` and sets the non-secret variables (`GITHUB_REPO`, `GOOGLE_CLIENT_ID`, `ALLOWED_DOMAIN`, `ALLOWED_ORIGIN`), so the deployed Worker can never drift from the code and settings in the repo. Don't paste code or edit those four variables in the dashboard; change them here and push.
 
-1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com) (Cloudflare Workers, not Pages).
-2. **Workers & Pages → Create → Create Worker.** Give it a name (e.g. `project-task-tracker-sync`), click **Deploy** to scaffold it.
-3. Click **Edit code**, delete the placeholder content, and paste in the contents of `worker/worker.js`. Click **Deploy**.
-4. Go to the Worker's **Settings → Variables and Secrets** and add:
-   - `GITHUB_TOKEN` (secret) — a fine-grained GitHub PAT, **Contents: Read and write**, scoped to this repository only.
-   - `GITHUB_REPO` — `lukeq-mich/project-task-tracker`
-   - `GOOGLE_CLIENT_ID` — the same client ID used in `auth.googleClientId`
-   - `ALLOWED_DOMAIN` — `umich.edu`
-   - `ALLOWED_ORIGIN` — `https://lukeq-mich.github.io`
-5. Copy the Worker's URL (shown at the top of its page, formatted like `https://project-task-tracker-sync.<your-subdomain>.workers.dev`).
-6. On the site, sign in as an Admin → **Settings** → **Shared sync** → paste the Worker URL → **Save**.
+The one thing that lives only in the dashboard is the secret:
+
+1. Go to the Worker's **Settings → Variables and Secrets** and add `GITHUB_TOKEN` (type **Secret**) — a fine-grained GitHub PAT, **Contents: Read and write**, scoped to this repository only. Secrets are preserved across deploys; it only needs to be set once (or again after rotating the PAT).
+2. Copy the Worker's URL (shown at the top of its page, formatted like `https://project-task-tracker-sync.<your-subdomain>.workers.dev`).
+3. On the site, sign in as an Admin → **Settings** → **Shared sync** → paste the Worker URL → **Save**.
+
+(To set up from scratch instead: create a free account at [dash.cloudflare.com](https://dash.cloudflare.com), **Workers & Pages → Create → Import a repository**, pick this repo, and it will build from `wrangler.jsonc`; then do the three steps above.)
 
 Once set, every signed-in user's create/edit/delete actions sync to the repository automatically (debounced so rapid edits become one commit). Anyone without network access to a configured Worker URL — or whose Google token fails verification — simply can't write to the repo; their session still works locally.
 
