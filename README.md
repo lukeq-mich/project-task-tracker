@@ -11,7 +11,7 @@ A general-purpose workspace for tracking projects and tasks across a delivery po
 | `index.html` | The whole app UI — sign-in gate, dashboard, projects (card + list views), tasks, My Tasks, member contributions, users admin, and the admin Settings page. |
 | `workflows.js` | All business rules: role-based access control, role-scoped upcoming tasks, one-lead-per-project and one-membership-per-user rules, overdue detection, colour mapping, KPIs, and validation. |
 | `data/data.json` | Seed content and configuration — users, projects, tasks, enums, theme, and the `auth` block (Google client ID, allowed domain, admin emails). |
-| `cover-images/` | Project cover images uploaded through the app (when a GitHub token is configured in Settings). |
+| `cover-images/` | Project cover images uploaded through the app (when shared sync via the Cloudflare Worker is configured in Settings). |
 | `.github/workflows/deploy.yml` | Deploys to GitHub Pages on every push to `main`. |
 
 ## Signing in
@@ -44,7 +44,7 @@ Four roles. **Admin** and **Executive** are identical except that only Admins ma
 ## Projects
 
 - **Card and list views** — cards show the project's cover image; the list view intentionally does not.
-- **Cover images** — upload from the project form. With a GitHub token configured in Settings, the image is committed to the repo's `cover-images/` folder (shared with everyone via the site); without one it's stored in the browser only.
+- **Cover images** — upload from the project form. With shared sync (the Cloudflare Worker URL) configured in Settings, the image is committed to the repo's `cover-images/` folder via the Worker — which allows this only for Admins and Executives — and shared with everyone via the site; without sync it's stored in the browser only.
 - **Names sort alphabetically** everywhere they're listed — the users table, lead/assignee dropdowns, member pickers and chips, and contributions.
 - **Date fields open a calendar picker** on click (native date picker, opened programmatically for one-click access).
 - **Info URL** — each project can link out to an external info page (e.g. a Google Drive folder), shown on the project detail page.
